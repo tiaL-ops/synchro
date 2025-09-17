@@ -81,55 +81,45 @@ export const getProjectTasks = async (projectId: string): Promise<Task[]> => {
   }
 };
 
-// Get tasks assigned to a user
+// Get tasks assigned to a user (including multiple assignees)
 export const getUserTasks = async (userId: string): Promise<Task[]> => {
   try {
-    // Try the optimized query first (with index)
-    try {
-      const q = query(
-        collection(db, 'tasks'),
-        where('assignedTo', '==', userId),
-        orderBy('createdAt', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      const tasks: Task[] = [];
+    console.log('🔍 Getting tasks for user:', userId);
+    
+    // Get all tasks and filter in memory since Firestore doesn't support
+    // array-contains queries with orderBy on different fields efficiently
+    const q = query(collection(db, 'tasks'));
+    const querySnapshot = await getDocs(q);
+    const tasks: Task[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const task = {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+        dueDate: data.dueDate?.toDate() || undefined
+      } as Task;
       
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        tasks.push({
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          dueDate: data.dueDate?.toDate() || undefined
-        } as Task);
-      });
+      // Check if user is assigned to this task (single or multiple assignees)
+      const isAssigned = 
+        task.assignedTo === userId || 
+        (task.assignedToUsers && task.assignedToUsers.includes(userId));
       
-      return tasks;
-    } catch (indexError) {
-      // Fallback: get all tasks and filter/sort in memory
-      console.warn('Index not ready, using fallback query:', indexError);
-      const q = query(
-        collection(db, 'tasks'),
-        where('assignedTo', '==', userId)
-      );
-      const querySnapshot = await getDocs(q);
-      const tasks: Task[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        tasks.push({
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          dueDate: data.dueDate?.toDate() || undefined
-        } as Task);
-      });
-      
-      return tasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    }
+      if (isAssigned) {
+        tasks.push(task);
+        console.log('✅ Found assigned task:', task.id, task.description);
+      }
+    });
+    
+    // Sort by creation date (newest first)
+    const sortedTasks = tasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    console.log('📋 Total tasks found for user:', sortedTasks.length);
+    
+    return sortedTasks;
   } catch (error) {
+    console.error('❌ Error getting user tasks:', error);
     throw error;
   }
 };

@@ -57,6 +57,7 @@ const Dashboard: React.FC = () => {
     deadline: ''
   });
   const [newTask, setNewTask] = useState({
+    title: '',
     description: '',
     assignedTo: '',
     dueDate: ''
@@ -150,6 +151,7 @@ const Dashboard: React.FC = () => {
   const openAddTaskDialog = (project: Project) => {
     setSelectedProject(project);
     setNewTask({
+      title: '',
       description: '',
       assignedTo: '',
       dueDate: ''
@@ -189,11 +191,12 @@ const Dashboard: React.FC = () => {
   };
 
   const handleAddTask = async () => {
-    if (!selectedProject || !newTask.description.trim()) return;
+    if (!selectedProject || !newTask.title.trim() || !newTask.description.trim()) return;
     
     try {
       const taskData: any = {
         projectId: selectedProject.id,
+        title: newTask.title.trim(),
         description: newTask.description.trim(),
         status: 'To Do' as const,
         createdBy: user!.uid

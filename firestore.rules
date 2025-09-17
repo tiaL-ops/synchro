@@ -49,8 +49,8 @@ service cloud.firestore {
          request.auth.uid == get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.createdBy);
       
       allow update: if request.auth != null && 
-        (request.auth.uid == get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.createdBy ||
-         request.auth.uid == resource.data.assignedTo);
+        (request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.teamMembers.keys() ||
+         request.auth.uid == get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.createdBy);
       
       allow delete: if request.auth != null && 
         request.auth.uid == get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.createdBy;

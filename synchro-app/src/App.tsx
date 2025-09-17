@@ -15,6 +15,7 @@ import './utils/debugUserLookup'; // Import for user lookup debugging
 import './utils/debugFirestoreUsers'; // Import for Firestore users debugging
 import './utils/debugUserCache'; // Import for user cache debugging
 import './utils/debugInvitations'; // Import for invitation debugging
+import './utils/debugTaskVisibility'; // Import for task visibility debugging
 
 const theme = createTheme({
   palette: {

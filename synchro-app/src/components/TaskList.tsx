@@ -50,8 +50,8 @@ const TaskList: React.FC<TaskListProps> = ({
                   primary={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Assignment fontSize="small" />
-                      <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                        {task.description}
+                      <Typography variant="body2" sx={{ flexGrow: 1, fontWeight: 'medium' }}>
+                        {task.title || 'Untitled Task'}
                       </Typography>
                       <Chip
                         label={task.status}
@@ -62,6 +62,9 @@ const TaskList: React.FC<TaskListProps> = ({
                   }
                   secondary={
                     <Box>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                        {task.description}
+                      </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Project: {task.projectId}
                       </Typography>

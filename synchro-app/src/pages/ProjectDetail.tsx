@@ -28,7 +28,10 @@ import {
   DialogActions,
   TextField,
   Fab,
-  Paper
+  Paper,
+  FormControl,
+  InputLabel,
+  Select
 } from '@mui/material';
 import {
   ArrowBack,
@@ -45,10 +48,13 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { getProject, updateProject, addProjectMember, removeProjectMember } from '../services/projectService';
 import { getProjectTasks, createTask, updateTask, deleteTask } from '../services/taskService';
+import { getUserById } from '../services/userService';
 import { Project, Task } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TeamMembersDetail from '../components/TeamMembersDetail';
 import PendingInvitationsList from '../components/PendingInvitationsList';
+import AddMemberDropdownDialog from '../components/AddMemberDropdownDialog';
+import EditTaskDialog from '../components/EditTaskDialog';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -59,12 +65,16 @@ const ProjectDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [assigneeDetails, setAssigneeDetails] = useState<{ [userId: string]: any }>({});
   
   // Dialog states
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
+  const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newTask, setNewTask] = useState({
+    title: '',
     description: '',
     assignedTo: '',
     dueDate: ''
@@ -96,6 +106,13 @@ const ProjectDetail: React.FC = () => {
 
     fetchData();
   }, [id, user]);
+
+  // Load assignee details when tasks change
+  useEffect(() => {
+    if (tasks.length > 0) {
+      loadAssigneeDetails();
+    }
+  }, [tasks]);
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -152,11 +169,12 @@ const ProjectDetail: React.FC = () => {
   };
 
   const handleAddTask = async () => {
-    if (!project || !newTask.description.trim()) return;
+    if (!project || !newTask.title.trim() || !newTask.description.trim()) return;
     
     try {
       const taskData = {
         projectId: project.id,
+        title: newTask.title,
         description: newTask.description,
         status: 'To Do' as const,
         assignedTo: newTask.assignedTo || undefined,
@@ -170,7 +188,7 @@ const ProjectDetail: React.FC = () => {
       const updatedTasks = await getProjectTasks(project.id);
       setTasks(updatedTasks);
       
-      setNewTask({ description: '', assignedTo: '', dueDate: '' });
+      setNewTask({ title: '', description: '', assignedTo: '', dueDate: '' });
       setAddTaskDialogOpen(false);
     } catch (error) {
       setError('Failed to create task');
@@ -204,9 +222,74 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const handleEditTask = (task: Task) => {
+    setSelectedTask(task);
+    setEditTaskDialogOpen(true);
+  };
+
+  const handleTaskUpdated = async () => {
+    // Refresh tasks after update
+    if (id && user) {
+      try {
+        const updatedTasks = await getProjectTasks(id);
+        setTasks(updatedTasks);
+      } catch (error) {
+        console.error('Error refreshing tasks:', error);
+      }
+    }
+  };
+
+  const handleInvitationSent = () => {
+    setAddMemberDialogOpen(false);
+    // Could show a success message here
+  };
+
   const formatDate = (date: Date | undefined | null) => {
     if (!date) return 'N/A';
     return date.toLocaleDateString();
+  };
+
+  const loadAssigneeDetails = async () => {
+    if (!tasks.length) return;
+    
+    const details: { [userId: string]: any } = {};
+    const allAssigneeIds = new Set<string>();
+    
+    // Collect all unique assignee IDs from tasks
+    tasks.forEach(task => {
+      if (task.assignedToUsers) {
+        task.assignedToUsers.forEach(userId => allAssigneeIds.add(userId));
+      } else if (task.assignedTo) {
+        allAssigneeIds.add(task.assignedTo);
+      }
+    });
+    
+    // Load user details for all assignees
+    const promises = Array.from(allAssigneeIds).map(async (userId) => {
+      try {
+        const user = await getUserById(userId);
+        if (user) {
+          details[userId] = user;
+        }
+      } catch (error) {
+        console.error('Error loading assignee details:', error);
+      }
+    });
+    
+    await Promise.all(promises);
+    setAssigneeDetails(details);
+  };
+
+  const getAssigneeNames = (task: Task) => {
+    const assigneeIds = task.assignedToUsers || (task.assignedTo ? [task.assignedTo] : []);
+    return assigneeIds.map(userId => {
+      const userDetails = assigneeDetails[userId];
+      if (userDetails) {
+        return userDetails.displayName || userDetails.email || 'Unknown User';
+      }
+      // Fallback to user ID if details not loaded yet
+      return `User ${userId.substring(0, 8)}`;
+    });
   };
 
   const getTaskStatusColor = (status: Task['status']) => {
@@ -358,7 +441,9 @@ const ProjectDetail: React.FC = () => {
         </Typography>
         
         <Grid container spacing={2}>
-          {Object.entries(tasksByStatus).map(([status, statusTasks]) => (
+          {Object.entries(tasksByStatus).map(([status, statusTasks]) => {
+            const currentStatus = status as 'To Do' | 'In Progress' | 'Review' | 'Done';
+            return (
             <Grid item xs={12} sm={6} md={3} key={status}>
               <Paper sx={{ p: 2, minHeight: 400 }}>
                 <Typography variant="h6" gutterBottom>
@@ -369,17 +454,34 @@ const ProjectDetail: React.FC = () => {
                 {statusTasks.map((task) => (
                   <Card key={task.id} sx={{ mb: 2 }}>
                     <CardContent>
-                      <Typography variant="body2" gutterBottom>
+                      <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                        {task.title || 'Untitled Task'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         {task.description}
                       </Typography>
-                      {task.assignedTo && (
-                        <Chip
-                          icon={<PersonAdd />}
-                          label="Assigned"
-                          size="small"
-                          sx={{ mb: 1 }}
-                        />
-                      )}
+                      
+                      {/* Multiple Assignees */}
+                      {(task.assignedToUsers && task.assignedToUsers.length > 0) || task.assignedTo ? (
+                        <Box sx={{ mb: 1 }}>
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                            Assigned to:
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {getAssigneeNames(task).map((name, index) => (
+                              <Chip
+                                key={index}
+                                label={name}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                icon={<PersonAdd />}
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      ) : null}
+                      
                       {task.dueDate && (
                         <Typography variant="caption" color="text.secondary" display="block">
                           Due: {formatDate(task.dueDate)}
@@ -387,7 +489,7 @@ const ProjectDetail: React.FC = () => {
                       )}
                     </CardContent>
                     <CardActions>
-                      {isMember && (
+                      {isMember && status !== 'Done' && (
                         <>
                           <Button
                             size="small"
@@ -399,16 +501,29 @@ const ProjectDetail: React.FC = () => {
                           <Button
                             size="small"
                             onClick={() => handleTaskStatusChange(task.id, 'Done')}
-                            disabled={task.status === 'Done'}
+                            disabled={status === 'Done'}
                           >
                             Complete
                           </Button>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditTask(task)}
+                            title="Edit task"
+                          >
+                            <Edit />
+                          </IconButton>
                         </>
+                      )}
+                      {isMember && status === 'Done' && (
+                        <Typography variant="caption" color="success.main" sx={{ fontStyle: 'italic' }}>
+                          ✓ Task completed
+                        </Typography>
                       )}
                       {isOwner && (
                         <IconButton
                           size="small"
                           onClick={() => handleDeleteTask(task.id)}
+                          title="Delete task"
                         >
                           <Delete />
                         </IconButton>
@@ -418,7 +533,8 @@ const ProjectDetail: React.FC = () => {
                 ))}
               </Paper>
             </Grid>
-          ))}
+            );
+          })}
         </Grid>
 
         {/* Add Task FAB */}
@@ -439,24 +555,12 @@ const ProjectDetail: React.FC = () => {
       </Container>
 
       {/* Add Member Dialog */}
-      <Dialog open={addMemberDialogOpen} onClose={() => setAddMemberDialogOpen(false)}>
-        <DialogTitle>Add Team Member</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Email Address"
-            fullWidth
-            variant="outlined"
-            value={newMemberEmail}
-            onChange={(e) => setNewMemberEmail(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddMemberDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddMember} variant="contained">Add</Button>
-        </DialogActions>
-      </Dialog>
+      <AddMemberDropdownDialog
+        open={addMemberDialogOpen}
+        project={project}
+        onClose={() => setAddMemberDialogOpen(false)}
+        onInvitationSent={handleInvitationSent}
+      />
 
       {/* Add Task Dialog */}
       <Dialog open={addTaskDialogOpen} onClose={() => setAddTaskDialogOpen(false)}>
@@ -465,6 +569,16 @@ const ProjectDetail: React.FC = () => {
           <TextField
             autoFocus
             margin="dense"
+            label="Task Title"
+            fullWidth
+            variant="outlined"
+            value={newTask.title}
+            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+            placeholder="Enter a clear, concise title..."
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
             label="Task Description"
             fullWidth
             variant="outlined"
@@ -472,8 +586,47 @@ const ProjectDetail: React.FC = () => {
             rows={3}
             value={newTask.description}
             onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+            placeholder="Describe what needs to be done..."
             sx={{ mb: 2 }}
           />
+          <FormControl fullWidth margin="dense" sx={{ mb: 2 }}>
+            <InputLabel>Assign To</InputLabel>
+            <Select
+              value={newTask.assignedTo}
+              onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
+              label="Assign To"
+            >
+              <MenuItem value="">
+                <em>Unassigned</em>
+              </MenuItem>
+              {project?.teamMembers && Object.entries(project.teamMembers).map(([userId, member]: [string, any]) => (
+                <MenuItem key={userId} value={userId}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {member.displayName ? member.displayName.charAt(0).toUpperCase() : 'U'}
+                    </Box>
+                    {member.displayName || member.email || 'Unknown User'}
+                    <Box sx={{ ml: 'auto', fontSize: '0.75rem', color: 'text.secondary' }}>
+                      {member.role}
+                    </Box>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <TextField
             margin="dense"
             label="Due Date"
@@ -487,9 +640,24 @@ const ProjectDetail: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddTaskDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddTask} variant="contained">Add Task</Button>
+          <Button 
+            onClick={handleAddTask} 
+            variant="contained"
+            disabled={!newTask.title.trim() || !newTask.description.trim()}
+          >
+            Add Task
+          </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Edit Task Dialog */}
+      <EditTaskDialog
+        open={editTaskDialogOpen}
+        task={selectedTask}
+        projectMembers={project?.teamMembers || {}}
+        onClose={() => setEditTaskDialogOpen(false)}
+        onTaskUpdated={handleTaskUpdated}
+      />
     </Box>
   );
 };

@@ -5,13 +5,19 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Button
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box
 } from '@mui/material';
 
 interface AddTaskDialogProps {
   open: boolean;
   project: any;
   formData: {
+    title: string;
     description: string;
     assignedTo: string;
     dueDate: string;
@@ -36,6 +42,16 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
         <TextField
           autoFocus
           margin="dense"
+          label="Task Title"
+          fullWidth
+          variant="outlined"
+          value={formData.title}
+          onChange={(e) => onFormChange('title', e.target.value)}
+          placeholder="Enter a clear, concise title..."
+          sx={{ mb: 2 }}
+        />
+        <TextField
+          margin="dense"
           label="Task Description"
           fullWidth
           multiline
@@ -43,18 +59,47 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
           variant="outlined"
           value={formData.description}
           onChange={(e) => onFormChange('description', e.target.value)}
+          placeholder="Describe what needs to be done..."
           sx={{ mb: 2 }}
         />
-        <TextField
-          margin="dense"
-          label="Assign To (User ID)"
-          fullWidth
-          variant="outlined"
-          value={formData.assignedTo}
-          onChange={(e) => onFormChange('assignedTo', e.target.value)}
-          sx={{ mb: 2 }}
-          placeholder="Leave empty to assign to yourself"
-        />
+        <FormControl fullWidth margin="dense" sx={{ mb: 2 }}>
+          <InputLabel>Assign To</InputLabel>
+          <Select
+            value={formData.assignedTo}
+            onChange={(e) => onFormChange('assignedTo', e.target.value)}
+            label="Assign To"
+          >
+            <MenuItem value="">
+              <em>Unassigned</em>
+            </MenuItem>
+            {project?.teamMembers && Object.entries(project.teamMembers).map(([userId, member]: [string, any]) => (
+              <MenuItem key={userId} value={userId}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      backgroundColor: 'primary.main',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    {member.displayName ? member.displayName.charAt(0).toUpperCase() : 'U'}
+                  </Box>
+                  {member.displayName || member.email || 'Unknown User'}
+                  <Box sx={{ ml: 'auto', fontSize: '0.75rem', color: 'text.secondary' }}>
+                    {member.role}
+                  </Box>
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <TextField
           margin="dense"
           label="Due Date"

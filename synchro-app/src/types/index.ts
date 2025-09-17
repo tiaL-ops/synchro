@@ -35,9 +35,11 @@ export interface Project {
 export interface Task {
   id: string;
   projectId: string;
+  title: string;
   description: string;
   status: 'To Do' | 'In Progress' | 'Review' | 'Done';
-  assignedTo?: string;
+  assignedTo?: string; // Keep for backward compatibility
+  assignedToUsers?: string[]; // New field for multiple assignees
   dueDate?: Date;
   createdBy: string;
   createdAt: Date;
