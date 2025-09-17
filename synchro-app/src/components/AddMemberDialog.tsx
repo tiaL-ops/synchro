@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -35,27 +35,103 @@ const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [foundUser, setFoundUser] = useState<User | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const emailLookupCache = useRef<Map<string, User | null>>(new Map());
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
-  const handleEmailChange = async (newEmail: string) => {
+  // Email validation function - more strict to avoid premature lookups
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+  };
+
+  // Check if email is complete enough to trigger lookup
+  const isEmailComplete = (email: string): boolean => {
+    const trimmed = email.trim();
+    if (!trimmed) return false;
+    
+    // Must have @ and at least one character after it
+    const atIndex = trimmed.indexOf('@');
+    if (atIndex === -1 || atIndex === 0) return false;
+    
+    // Must have at least one character after @
+    const afterAt = trimmed.substring(atIndex + 1);
+    if (!afterAt) return false;
+    
+    // Must have at least one dot after @
+    const dotIndex = afterAt.indexOf('.');
+    if (dotIndex === -1 || dotIndex === 0) return false;
+    
+    // Must have at least one character after the dot
+    const afterDot = afterAt.substring(dotIndex + 1);
+    if (!afterDot) return false;
+    
+    return true;
+  };
+
+  const handleEmailChange = (newEmail: string) => {
     setEmail(newEmail);
     setError('');
     setFoundUser(null);
 
-    if (newEmail.trim() && newEmail.includes('@')) {
-      setLoading(true);
-      try {
-        const user = await findUserByEmail(newEmail.trim());
-        if (user) {
-          setFoundUser(user);
-        } else {
+    // Clear previous debounce timer
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Only start lookup if email is complete enough (has @, domain, and extension)
+    if (newEmail.trim() && isEmailComplete(newEmail)) {
+      const cleanEmail = newEmail.trim().toLowerCase();
+      
+      // Check local cache first
+      if (emailLookupCache.current.has(cleanEmail)) {
+        const cachedUser = emailLookupCache.current.get(cleanEmail);
+        setFoundUser(cachedUser || null);
+        if (!cachedUser) {
           setError('User not found. Please make sure the user has an account.');
         }
-      } catch (err) {
-        console.error('User lookup error:', err);
-        setError(`Error looking up user: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      } finally {
-        setLoading(false);
+        // Maintain focus after cached lookup
+        setTimeout(() => {
+          if (emailInputRef.current) {
+            emailInputRef.current.focus();
+          }
+        }, 0);
+        return;
       }
+      
+      setLoading(true);
+      
+      // Debounce the lookup by 300ms (reduced for better responsiveness)
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const user = await findUserByEmail(cleanEmail);
+          
+          // Store result in local cache
+          emailLookupCache.current.set(cleanEmail, user);
+          
+          if (user) {
+            setFoundUser(user);
+          } else {
+            setError('User not found. Please make sure the user has an account.');
+          }
+        } catch (err) {
+          console.error('User lookup error:', err);
+          setError(`Error looking up user: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } finally {
+          setLoading(false);
+          // Maintain focus after lookup completes
+          setTimeout(() => {
+            if (emailInputRef.current) {
+              emailInputRef.current.focus();
+            }
+          }, 0);
+        }
+      }, 300);
+    } else if (newEmail.trim() && newEmail.includes('@') && !isEmailComplete(newEmail)) {
+      // Show helpful message for incomplete emails
+      setError('Please enter a complete email address (e.g., user@example.com)');
+    } else {
+      setLoading(false);
     }
   };
 
@@ -66,6 +142,8 @@ const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
       setRole('Member');
       setFoundUser(null);
       setError('');
+      // Clear local cache after successful addition
+      emailLookupCache.current.clear();
     }
   };
 
@@ -75,13 +153,37 @@ const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
     setRole('Member');
     setFoundUser(null);
     setError('');
+    // Clear local email lookup cache when dialog closes
+    emailLookupCache.current.clear();
   };
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  // Ensure focus when dialog opens
+  useEffect(() => {
+    if (open && emailInputRef.current) {
+      // Small delay to ensure dialog is fully rendered
+      setTimeout(() => {
+        if (emailInputRef.current) {
+          emailInputRef.current.focus();
+        }
+      }, 100);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Add Team Member</DialogTitle>
       <DialogContent>
         <TextField
+          inputRef={emailInputRef}
           autoFocus
           margin="dense"
           label="Email Address"
@@ -91,6 +193,19 @@ const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
           onChange={(e) => handleEmailChange(e.target.value)}
           sx={{ mb: 2 }}
           disabled={loading}
+          placeholder="Enter complete email address (e.g., user@example.com)"
+          helperText={email && !isEmailComplete(email) && email.includes('@') ? "Please enter a complete email address" : ""}
+          error={Boolean(email && !isEmailComplete(email) && email.includes('@'))}
+          onBlur={(e) => {
+            // Maintain focus if user clicks outside but email is incomplete or if we're still loading
+            if ((email && !isEmailComplete(email) && email.includes('@') ) || loading) {
+              setTimeout(() => {
+                if (emailInputRef.current) {
+                  emailInputRef.current.focus();
+                }
+              }, 0);
+            }
+          }}
         />
         
         {loading && (

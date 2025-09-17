@@ -10,6 +10,7 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from './firebase';
 import { User as UserType } from '../types';
+import { clearUserCache } from './userService';
 
 // Create user account with email/password
 export const createUser = async (email: string, password: string, displayName: string): Promise<User> => {
@@ -94,6 +95,8 @@ export const signInWithGoogle = async (): Promise<User> => {
 export const signOutUser = async (): Promise<void> => {
   try {
     await signOut(auth);
+    // Clear user cache on sign out
+    clearUserCache();
   } catch (error) {
     throw error;
   }
