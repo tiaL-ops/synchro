@@ -14,6 +14,21 @@ import {
 import { db } from './firebase';
 import { Project, User } from '../types';
 
+// Helper function to convert teamMembers timestamps
+const convertTeamMembersTimestamps = (teamMembers: any) => {
+  const convertedTeamMembers: { [userId: string]: { role: string; joinedAt: Date } } = {};
+  
+  for (const [userId, member] of Object.entries(teamMembers || {})) {
+    const memberData = member as any;
+    convertedTeamMembers[userId] = {
+      role: memberData.role,
+      joinedAt: memberData.joinedAt?.toDate() || new Date()
+    };
+  }
+  
+  return convertedTeamMembers;
+};
+
 // Create a new project
 export const createProject = async (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
   try {
@@ -43,12 +58,17 @@ export const getUserProjects = async (userId: string): Promise<Project[]> => {
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        
+        // Convert teamMembers joinedAt timestamps to Date objects
+        const convertedTeamMembers = convertTeamMembersTimestamps(data.teamMembers);
+        
         projects.push({
           id: doc.id,
           ...data,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
-          deadline: data.deadline?.toDate() || undefined
+          deadline: data.deadline?.toDate() || undefined,
+          teamMembers: convertedTeamMembers
         } as Project);
       });
       
@@ -62,12 +82,17 @@ export const getUserProjects = async (userId: string): Promise<Project[]> => {
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        
+        // Convert teamMembers joinedAt timestamps to Date objects
+        const convertedTeamMembers = convertTeamMembersTimestamps(data.teamMembers);
+        
         const project = {
           id: doc.id,
           ...data,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
-          deadline: data.deadline?.toDate() || undefined
+          deadline: data.deadline?.toDate() || undefined,
+          teamMembers: convertedTeamMembers
         } as Project;
         
         // Check if user is a member of this project
@@ -89,12 +114,17 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
     const projectDoc = await getDoc(doc(db, 'projects', projectId));
     if (projectDoc.exists()) {
       const data = projectDoc.data();
+      
+      // Convert teamMembers joinedAt timestamps to Date objects
+      const convertedTeamMembers = convertTeamMembersTimestamps(data.teamMembers);
+      
       return {
         id: projectDoc.id,
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
-        deadline: data.deadline?.toDate() || undefined
+        deadline: data.deadline?.toDate() || undefined,
+        teamMembers: convertedTeamMembers
       } as Project;
     }
     return null;

@@ -31,26 +31,51 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
 // Get all tasks for a project
 export const getProjectTasks = async (projectId: string): Promise<Task[]> => {
   try {
-    const q = query(
-      collection(db, 'tasks'),
-      where('projectId', '==', projectId),
-      orderBy('createdAt', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
-    const tasks: Task[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      tasks.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-        dueDate: data.dueDate?.toDate() || undefined
-      } as Task);
-    });
-    
-    return tasks;
+    // Try the optimized query first (with index)
+    try {
+      const q = query(
+        collection(db, 'tasks'),
+        where('projectId', '==', projectId),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      const tasks: Task[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        tasks.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+          dueDate: data.dueDate?.toDate() || undefined
+        } as Task);
+      });
+      
+      return tasks;
+    } catch (indexError) {
+      // Fallback: get all tasks and filter/sort in memory
+      console.warn('Index not ready, using fallback query for project tasks:', indexError);
+      const q = query(
+        collection(db, 'tasks'),
+        where('projectId', '==', projectId)
+      );
+      const querySnapshot = await getDocs(q);
+      const tasks: Task[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        tasks.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+          dueDate: data.dueDate?.toDate() || undefined
+        } as Task);
+      });
+      
+      return tasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
   } catch (error) {
     throw error;
   }

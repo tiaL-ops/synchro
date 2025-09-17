@@ -29,6 +29,14 @@ export const testIndexes = async () => {
         where('projectId', '==', 'test-project'),
         orderBy('status', 'asc')
       )
+    },
+    {
+      name: 'projectId + createdAt',
+      query: query(
+        collection(db, 'tasks'),
+        where('projectId', '==', 'test-project'),
+        orderBy('createdAt', 'desc')
+      )
     }
   ];
   

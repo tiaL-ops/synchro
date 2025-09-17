@@ -188,7 +188,8 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | undefined | null) => {
+    if (!date) return 'N/A';
     return date.toLocaleDateString();
   };
 
