@@ -48,6 +48,7 @@ import { getProjectTasks, createTask, updateTask, deleteTask } from '../services
 import { Project, Task } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TeamMembersDetail from '../components/TeamMembersDetail';
+import PendingInvitationsList from '../components/PendingInvitationsList';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -218,8 +219,8 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const isOwner = project && project.createdBy === user?.uid;
-  const isMember = project && user && project.teamMembers[user.uid];
+  const isOwner = Boolean(project && project.createdBy === user?.uid);
+  const isMember = Boolean(project && user && project.teamMembers[user.uid]);
 
   if (loading) {
     return <LoadingSpinner message="Loading project details..." />;
@@ -332,6 +333,12 @@ const ProjectDetail: React.FC = () => {
                 color={project.visibility === 'public' ? 'success' : 'default'}
               />
             </Box>
+
+            {/* Pending Invitations (for owners) */}
+            <PendingInvitationsList 
+              projectId={project.id} 
+              isOwner={isOwner} 
+            />
 
             {/* Team Members */}
             <TeamMembersDetail

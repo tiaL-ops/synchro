@@ -12,6 +12,7 @@ import {
 import { Delete, ExitToApp } from '@mui/icons-material';
 import { getUserById } from '../services/userService';
 import { User } from '../types';
+import ConfirmRemoveMemberDialog from './ConfirmRemoveMemberDialog';
 
 interface TeamMember {
   role: 'Owner' | 'Member' | 'Viewer';
@@ -37,6 +38,18 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
 }) => {
   const [memberDetails, setMemberDetails] = useState<{ [userId: string]: User }>({});
   const [loading, setLoading] = useState(true);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    userId: string;
+    userName: string;
+    userEmail: string;
+  }>({
+    open: false,
+    userId: '',
+    userName: '',
+    userEmail: ''
+  });
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
     const fetchMemberDetails = async () => {
@@ -61,6 +74,38 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
 
     fetchMemberDetails();
   }, [teamMembers]);
+
+  const handleRemoveClick = (userId: string) => {
+    const user = memberDetails[userId];
+    if (user) {
+      setConfirmDialog({
+        open: true,
+        userId,
+        userName: user.displayName || user.email,
+        userEmail: user.email
+      });
+    }
+  };
+
+  const handleConfirmRemove = async () => {
+    if (!onRemoveMember) return;
+    
+    setRemoving(true);
+    try {
+      await onRemoveMember(confirmDialog.userId);
+      setConfirmDialog({ open: false, userId: '', userName: '', userEmail: '' });
+      // Refresh the page after successful removal
+      window.location.reload();
+    } catch (error) {
+      console.error('Error removing member:', error);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const handleCancelRemove = () => {
+    setConfirmDialog({ open: false, userId: '', userName: '', userEmail: '' });
+  };
 
   if (loading) {
     return (
@@ -131,7 +176,7 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
                 {isOwner && userId !== currentUserId && onRemoveMember ? (
                   <IconButton
                     edge="end"
-                    onClick={() => onRemoveMember(userId)}
+                    onClick={() => handleRemoveClick(userId)}
                     title="Remove member"
                     color="error"
                   >
@@ -152,6 +197,16 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
           );
         })}
       </List>
+
+      {/* Confirmation Dialog */}
+      <ConfirmRemoveMemberDialog
+        open={confirmDialog.open}
+        memberName={confirmDialog.userName}
+        memberEmail={confirmDialog.userEmail}
+        onConfirm={handleConfirmRemove}
+        onCancel={handleCancelRemove}
+        loading={removing}
+      />
     </Box>
   );
 };

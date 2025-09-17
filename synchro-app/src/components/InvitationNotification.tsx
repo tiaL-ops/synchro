@@ -73,6 +73,11 @@ const InvitationNotification: React.FC = () => {
       setInvitations(prev => prev.filter(inv => inv.id !== invitation.id));
       
       console.log('Invitation accepted and user added to project');
+      
+      // Refresh the page to show updated project list
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error('Error accepting invitation:', error);
     } finally {

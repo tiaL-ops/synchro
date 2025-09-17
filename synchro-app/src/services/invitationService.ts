@@ -136,6 +136,39 @@ export const declineInvitation = async (invitationId: string): Promise<void> => 
   }
 };
 
+// Get pending invitations for a specific project
+export const getProjectInvitations = async (projectId: string): Promise<Invitation[]> => {
+  try {
+    console.log('🔍 Getting pending invitations for project:', projectId);
+    
+    const q = query(
+      collection(db, 'invitations'),
+      where('projectId', '==', projectId),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const invitations: Invitation[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      invitations.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date()
+      } as Invitation);
+    });
+    
+    console.log('✅ Found project invitations:', invitations.length);
+    return invitations;
+  } catch (error) {
+    console.error('❌ Error getting project invitations:', error);
+    throw error;
+  }
+};
+
 // Delete an invitation (for cleanup)
 export const deleteInvitation = async (invitationId: string): Promise<void> => {
   try {
