@@ -1,7 +1,5 @@
 {
   "dependencies": {
-    "@genkit-ai/google-genai": "^1.19.2",
-    "firebase": "^12.2.1",
-    "genkit": "^1.19.2"
+    "firebase": "^12.2.1"
   }
 }
