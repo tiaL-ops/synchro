@@ -6,11 +6,9 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   Button,
   Box,
   Fab,
-  Chip,
   Alert,
   AppBar,
   Toolbar,
@@ -18,39 +16,23 @@ import {
   Menu,
   MenuItem,
   Avatar,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Divider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Select,
-  FormControl,
-  InputLabel,
   Snackbar
 } from '@mui/material';
 import {
   Add,
   AccountCircle,
-  ExitToApp,
-  Group,
-  CalendarToday,
-  Assignment,
-  Person,
-  Edit,
-  PersonAdd,
-  Task as TaskIcon,
-  Schedule
+  ExitToApp
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProjects, updateProject, addProjectMember } from '../services/projectService';
 import { getUserTasks, createTask } from '../services/taskService';
 import { Project, Task } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProjectCard from '../components/ProjectCard';
+import TaskList from '../components/TaskList';
+import EditProjectDialog from '../components/EditProjectDialog';
+import AddMemberDialog from '../components/AddMemberDialog';
+import AddTaskDialog from '../components/AddTaskDialog';
 
 const Dashboard: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -73,8 +55,6 @@ const Dashboard: React.FC = () => {
     goal: '',
     deadline: ''
   });
-  const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState<'Member' | 'Viewer'>('Member');
   const [newTask, setNewTask] = useState({
     description: '',
     assignedTo: '',
@@ -93,15 +73,16 @@ const Dashboard: React.FC = () => {
       if (!user) return;
       
       try {
-        const [userProjects, userTasks] = await Promise.all([
+        setLoading(true);
+        const [projectsData, tasksData] = await Promise.all([
           getUserProjects(user.uid),
           getUserTasks(user.uid)
         ]);
-        setProjects(userProjects);
-        setTasks(userTasks);
+        setProjects(projectsData);
+        setTasks(tasksData);
       } catch (error) {
-        setError('Failed to load data');
         console.error('Error fetching data:', error);
+        setError('Failed to load data');
       } finally {
         setLoading(false);
       }
@@ -142,7 +123,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // New handler functions
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setSnackbar({ open: true, message, severity });
   };
@@ -163,8 +143,6 @@ const Dashboard: React.FC = () => {
 
   const openAddMemberDialog = (project: Project) => {
     setSelectedProject(project);
-    setNewMemberEmail('');
-    setNewMemberRole('Member');
     setAddMemberDialog(true);
   };
 
@@ -187,14 +165,12 @@ const Dashboard: React.FC = () => {
         goal: editForm.goal
       };
       
-      // Only add deadline if it's provided
       if (editForm.deadline) {
         updateData.deadline = new Date(editForm.deadline);
       }
       
       await updateProject(selectedProject.id, updateData);
       
-      // Refresh projects
       const updatedProjects = await getUserProjects(user!.uid);
       setProjects(updatedProjects);
       
@@ -206,17 +182,12 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleAddMember = async () => {
-    if (!selectedProject || !newMemberEmail.trim()) return;
+  const handleAddMember = async (userId: string, userEmail: string, role: 'Member' | 'Viewer') => {
+    if (!selectedProject) return;
     
     try {
-      // For now, we'll use the email as the user ID
-      // In a real app, you'd look up the user by email first
-      const userId = newMemberEmail.trim();
+      await addProjectMember(selectedProject.id, userId, userEmail, role);
       
-      await addProjectMember(selectedProject.id, userId, newMemberEmail, newMemberRole);
-      
-      // Refresh projects
       const updatedProjects = await getUserProjects(user!.uid);
       setProjects(updatedProjects);
       
@@ -239,19 +210,16 @@ const Dashboard: React.FC = () => {
         createdBy: user!.uid
       };
       
-      // Only add assignedTo if it's not empty
       if (newTask.assignedTo && newTask.assignedTo.trim()) {
         taskData.assignedTo = newTask.assignedTo.trim();
       }
       
-      // Only add dueDate if it's provided
       if (newTask.dueDate) {
         taskData.dueDate = new Date(newTask.dueDate);
       }
       
       await createTask(taskData);
       
-      // Refresh tasks
       const updatedTasks = await getUserTasks(user!.uid);
       setTasks(updatedTasks);
       
@@ -358,84 +326,15 @@ const Dashboard: React.FC = () => {
               <Grid container spacing={2}>
                 {projects.map((project) => (
                   <Grid item xs={12} sm={6} key={project.id}>
-                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Typography variant="h6" component="h2" gutterBottom>
-                          {project.projectName}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          {project.goal}
-                        </Typography>
-                        
-                        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-                          <Chip
-                            icon={<Group />}
-                            label={`${Object.keys(project.teamMembers).length} members`}
-                            size="small"
-                            variant="outlined"
-                          />
-                          <Chip
-                            icon={<CalendarToday />}
-                            label={formatDate(project.createdAt)}
-                            size="small"
-                            variant="outlined"
-                          />
-                          {project.deadline && (
-                            <Chip
-                              icon={<Schedule />}
-                              label={`Due ${formatDate(project.deadline)}`}
-                              size="small"
-                              variant="outlined"
-                              color="warning"
-                            />
-                          )}
-                        </Box>
-
-                        <Chip
-                          label={project.visibility}
-                          size="small"
-                          color={project.visibility === 'public' ? 'success' : 'default'}
-                        />
-                      </CardContent>
-                      
-                      <CardActions sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                        <Button
-                          size="small"
-                          onClick={() => navigate(`/project/${project.id}`)}
-                        >
-                          View Details
-                        </Button>
-                        
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          {/* Only show edit buttons if user is the project owner */}
-                          {project.createdBy === user?.uid && (
-                            <>
-                              <IconButton
-                                size="small"
-                                onClick={() => openEditProjectDialog(project)}
-                                title="Edit Project"
-                              >
-                                <Edit />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => openAddMemberDialog(project)}
-                                title="Add Member"
-                              >
-                                <PersonAdd />
-                              </IconButton>
-                            </>
-                          )}
-                          <IconButton
-                            size="small"
-                            onClick={() => openAddTaskDialog(project)}
-                            title="Add Task"
-                          >
-                            <TaskIcon />
-                          </IconButton>
-                        </Box>
-                      </CardActions>
-                    </Card>
+                    <ProjectCard
+                      project={project}
+                      currentUserId={user!.uid}
+                      onViewDetails={(project) => navigate(`/project/${project.id}`)}
+                      onEditProject={openEditProjectDialog}
+                      onAddMember={openAddMemberDialog}
+                      onAddTask={openAddTaskDialog}
+                      formatDate={formatDate}
+                    />
                   </Grid>
                 ))}
               </Grid>
@@ -444,54 +343,11 @@ const Dashboard: React.FC = () => {
 
           {/* Tasks Section */}
           <Grid item xs={12} md={4}>
-            <Typography variant="h5" gutterBottom>
-              Your Tasks
-            </Typography>
-            {tasks.length === 0 ? (
-              <Card>
-                <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No tasks assigned to you yet
-                  </Typography>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <List>
-                  {tasks.slice(0, 5).map((task, index) => (
-                    <React.Fragment key={task.id}>
-                      <ListItem>
-                        <ListItemText
-                          primary={task.description}
-                          secondary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                              <Chip
-                                label={task.status}
-                                size="small"
-                                color={getTaskStatusColor(task.status) as any}
-                              />
-                              {task.dueDate && (
-                                <Typography variant="caption" color="text.secondary">
-                                  Due: {formatDate(task.dueDate)}
-                                </Typography>
-                              )}
-                            </Box>
-                          }
-                        />
-                      </ListItem>
-                      {index < tasks.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                </List>
-                {tasks.length > 5 && (
-                  <Box sx={{ p: 2, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      And {tasks.length - 5} more tasks...
-                    </Typography>
-                  </Box>
-                )}
-              </Card>
-            )}
+            <TaskList
+              tasks={tasks}
+              formatDate={formatDate}
+              getTaskStatusColor={getTaskStatusColor}
+            />
           </Grid>
         </Grid>
 
@@ -509,124 +365,33 @@ const Dashboard: React.FC = () => {
         </Fab>
       </Container>
 
-      {/* Edit Project Dialog */}
-      <Dialog open={editProjectDialog} onClose={() => setEditProjectDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Project</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Project Name"
-            fullWidth
-            variant="outlined"
-            value={editForm.projectName}
-            onChange={(e) => setEditForm({ ...editForm, projectName: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Project Goal"
-            fullWidth
-            multiline
-            rows={3}
-            variant="outlined"
-            value={editForm.goal}
-            onChange={(e) => setEditForm({ ...editForm, goal: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Deadline"
-            type="date"
-            fullWidth
-            variant="outlined"
-            value={editForm.deadline}
-            onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
-            InputLabelProps={{ shrink: true }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditProjectDialog(false)}>Cancel</Button>
-          <Button onClick={handleEditProject} variant="contained">Save Changes</Button>
-        </DialogActions>
-      </Dialog>
+      {/* Dialogs */}
+      <EditProjectDialog
+        open={editProjectDialog}
+        project={selectedProject}
+        formData={editForm}
+        onClose={() => setEditProjectDialog(false)}
+        onSave={handleEditProject}
+        onFormChange={(field, value) => setEditForm({ ...editForm, [field]: value })}
+      />
 
-      {/* Add Member Dialog */}
-      <Dialog open={addMemberDialog} onClose={() => setAddMemberDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Team Member</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Email Address"
-            fullWidth
-            variant="outlined"
-            value={newMemberEmail}
-            onChange={(e) => setNewMemberEmail(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <FormControl fullWidth>
-            <InputLabel>Role</InputLabel>
-            <Select
-              value={newMemberRole}
-              label="Role"
-              onChange={(e) => setNewMemberRole(e.target.value as 'Member' | 'Viewer')}
-            >
-              <MenuItem value="Member">Member</MenuItem>
-              <MenuItem value="Viewer">Viewer</MenuItem>
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddMemberDialog(false)}>Cancel</Button>
-          <Button onClick={handleAddMember} variant="contained">Add Member</Button>
-        </DialogActions>
-      </Dialog>
+      <AddMemberDialog
+        open={addMemberDialog}
+        project={selectedProject}
+        onClose={() => setAddMemberDialog(false)}
+        onAddMember={handleAddMember}
+      />
 
-      {/* Add Task Dialog */}
-      <Dialog open={addTaskDialog} onClose={() => setAddTaskDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Task</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Task Description"
-            fullWidth
-            multiline
-            rows={3}
-            variant="outlined"
-            value={newTask.description}
-            onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Assign To (User ID)"
-            fullWidth
-            variant="outlined"
-            value={newTask.assignedTo}
-            onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
-            sx={{ mb: 2 }}
-            placeholder="Leave empty to assign to yourself"
-          />
-          <TextField
-            margin="dense"
-            label="Due Date"
-            type="date"
-            fullWidth
-            variant="outlined"
-            value={newTask.dueDate}
-            onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-            InputLabelProps={{ shrink: true }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddTaskDialog(false)}>Cancel</Button>
-          <Button onClick={handleAddTask} variant="contained">Create Task</Button>
-        </DialogActions>
-      </Dialog>
+      <AddTaskDialog
+        open={addTaskDialog}
+        project={selectedProject}
+        formData={newTask}
+        onClose={() => setAddTaskDialog(false)}
+        onSave={handleAddTask}
+        onFormChange={(field, value) => setNewTask({ ...newTask, [field]: value })}
+      />
 
-      {/* Snackbar for notifications */}
+      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}

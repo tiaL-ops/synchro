@@ -6,6 +6,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // Allow users to search for other users by email (needed for member addition)
+    match /users/{document=**} {
+      allow read: if request.auth != null;
+    }
+    
     // Projects - users can read projects they're members of, and write if they're the owner
     match /projects/{projectId} {
       allow read: if request.auth != null && 

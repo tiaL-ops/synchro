@@ -167,7 +167,7 @@ export const addProjectMember = async (projectId: string, userId: string, userEm
       
       teamMembers[userId] = {
         role,
-        joinedAt: new Date()
+        joinedAt: serverTimestamp()
       };
       
       await updateDoc(projectRef, {

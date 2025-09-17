@@ -47,6 +47,7 @@ import { getProject, updateProject, addProjectMember, removeProjectMember } from
 import { getProjectTasks, createTask, updateTask, deleteTask } from '../services/taskService';
 import { Project, Task } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
+import TeamMembersDetail from '../components/TeamMembersDetail';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -319,31 +320,13 @@ const ProjectDetail: React.FC = () => {
             </Box>
 
             {/* Team Members */}
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Team Members
-              </Typography>
-              <List>
-                {Object.entries(project.teamMembers).map(([userId, member]) => (
-                  <ListItem key={userId}>
-                    <ListItemText
-                      primary={member.role}
-                      secondary={`Joined ${formatDate(member.joinedAt)}`}
-                    />
-                    {isOwner && userId !== user?.uid && (
-                      <ListItemSecondaryAction>
-                        <IconButton
-                          edge="end"
-                          onClick={() => removeProjectMember(project.id, userId)}
-                        >
-                          <Delete />
-                        </IconButton>
-                      </ListItemSecondaryAction>
-                    )}
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
+            <TeamMembersDetail
+              teamMembers={project.teamMembers}
+              createdBy={project.createdBy}
+              currentUserId={user?.uid || ''}
+              onRemoveMember={isOwner ? (userId) => removeProjectMember(project.id, userId) : undefined}
+              formatDate={formatDate}
+            />
           </CardContent>
         </Card>
 

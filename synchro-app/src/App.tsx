@@ -11,6 +11,8 @@ import ProjectDetail from './pages/ProjectDetail';
 import CreateProject from './pages/CreateProject';
 import LoadingSpinner from './components/LoadingSpinner';
 import './utils/indexTest'; // Import for browser console testing
+import './utils/debugUserLookup'; // Import for user lookup debugging
+import './utils/debugFirestoreUsers'; // Import for Firestore users debugging
 
 const theme = createTheme({
   palette: {
