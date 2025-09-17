@@ -95,8 +95,8 @@ export const getUserProjects = async (userId: string): Promise<Project[]> => {
           teamMembers: convertedTeamMembers
         } as Project;
         
-        // Check if user is a member of this project
-        if (project.teamMembers && project.teamMembers[userId]) {
+        // Check if user is a member of this project or the project owner
+        if ((project.teamMembers && project.teamMembers[userId]) || project.createdBy === userId) {
           projects.push(project);
         }
       });

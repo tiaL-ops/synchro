@@ -177,7 +177,7 @@ const ProjectDetail: React.FC = () => {
         title: newTask.title,
         description: newTask.description,
         status: 'To Do' as const,
-        assignedTo: newTask.assignedTo || undefined,
+        assignedTo: newTask.assignedTo && newTask.assignedTo.trim() ? newTask.assignedTo : undefined,
         dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
         createdBy: user!.uid
       };
@@ -599,6 +599,35 @@ const ProjectDetail: React.FC = () => {
               <MenuItem value="">
                 <em>Unassigned</em>
               </MenuItem>
+              {/* Project Owner */}
+              {project?.createdBy && (
+                <MenuItem key={project.createdBy} value={project.createdBy}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                    {project.createdByEmail ? project.createdByEmail.charAt(0).toUpperCase() : 'O'}
+                  </Box>
+                  {project.createdByEmail || `Owner (${project.createdBy.substring(0, 8)}...)`}
+                    <Box sx={{ ml: 'auto', fontSize: '0.75rem', color: 'text.secondary' }}>
+                      Owner
+                    </Box>
+                  </Box>
+                </MenuItem>
+              )}
+              
+              {/* Team Members */}
               {project?.teamMembers && Object.entries(project.teamMembers).map(([userId, member]: [string, any]) => (
                 <MenuItem key={userId} value={userId}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -616,9 +645,9 @@ const ProjectDetail: React.FC = () => {
                         fontWeight: 'bold'
                       }}
                     >
-                      {member.displayName ? member.displayName.charAt(0).toUpperCase() : 'U'}
+                      {userId.charAt(0).toUpperCase()}
                     </Box>
-                    {member.displayName || member.email || 'Unknown User'}
+                    {`Member (${userId.substring(0, 8)}...)`}
                     <Box sx={{ ml: 'auto', fontSize: '0.75rem', color: 'text.secondary' }}>
                       {member.role}
                     </Box>
@@ -655,6 +684,7 @@ const ProjectDetail: React.FC = () => {
         open={editTaskDialogOpen}
         task={selectedTask}
         projectMembers={project?.teamMembers || {}}
+        project={project ? { createdBy: project.createdBy, createdByEmail: project.createdByEmail } : undefined}
         onClose={() => setEditTaskDialogOpen(false)}
         onTaskUpdated={handleTaskUpdated}
       />

@@ -56,6 +56,12 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
       const details: { [userId: string]: User } = {};
       
       const userIds = Object.keys(teamMembers);
+      
+      // Add project owner if not already in teamMembers
+      if (createdBy && !userIds.includes(createdBy)) {
+        userIds.push(createdBy);
+      }
+      
       const promises = userIds.map(async (userId) => {
         try {
           const user = await getUserById(userId);
@@ -73,7 +79,7 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
     };
 
     fetchMemberDetails();
-  }, [teamMembers]);
+  }, [teamMembers, createdBy]);
 
   const handleRemoveClick = (userId: string) => {
     const user = memberDetails[userId];
@@ -128,10 +134,36 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
         Team Members
       </Typography>
       <List>
+        {/* Render project owner first */}
+        {createdBy && memberDetails[createdBy] && (
+          <ListItem key={createdBy}>
+            <Avatar sx={{ mr: 2 }}>
+              {memberDetails[createdBy].displayName?.charAt(0)?.toUpperCase() || 'O'}
+            </Avatar>
+            <ListItemText
+              primary={memberDetails[createdBy].displayName || memberDetails[createdBy].email || 'Project Owner'}
+              secondary={`Owner • Project Creator`}
+            />
+            <ListItemSecondaryAction>
+              {isOwner && (
+                <Typography variant="caption" color="primary" sx={{ fontStyle: 'italic' }}>
+                  You
+                </Typography>
+              )}
+            </ListItemSecondaryAction>
+          </ListItem>
+        )}
+        
+        {/* Render team members (excluding project owner) */}
         {Object.entries(teamMembers).map(([userId, member]) => {
           const user = memberDetails[userId];
           const isProjectOwner = userId === createdBy;
           const isCurrentUser = userId === currentUserId;
+          
+          // Skip project owner since they're displayed above
+          if (isProjectOwner) {
+            return null;
+          }
           
           if (!user) {
             return (

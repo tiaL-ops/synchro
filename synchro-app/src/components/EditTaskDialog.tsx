@@ -26,6 +26,7 @@ interface EditTaskDialogProps {
   open: boolean;
   task: Task | null;
   projectMembers: { [userId: string]: any };
+  project?: { createdBy: string; createdByEmail?: string };
   onClose: () => void;
   onTaskUpdated: () => void;
 }
@@ -34,6 +35,7 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
   open,
   task,
   projectMembers,
+  project,
   onClose,
   onTaskUpdated
 }) => {
@@ -65,6 +67,11 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
   const loadMemberDetails = async () => {
     const details: { [userId: string]: User } = {};
     const memberIds = Object.keys(projectMembers);
+    
+    // Add project owner if not already in teamMembers
+    if (project?.createdBy && !memberIds.includes(project.createdBy)) {
+      memberIds.push(project.createdBy);
+    }
     
     const promises = memberIds.map(async (userId) => {
       try {

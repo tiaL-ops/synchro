@@ -72,6 +72,7 @@ const CreateProject: React.FC = () => {
         goal: formData.goal,
         deadline: formData.deadline ? new Date(formData.deadline) : undefined,
         createdBy: user.uid,
+        createdByEmail: user.email || '',
         teamMembers: {
           [user.uid]: {
             role: 'Owner' as const,

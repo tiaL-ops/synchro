@@ -20,6 +20,7 @@ export interface Project {
   goal: string;
   deadline?: Date;
   createdBy: string;
+  createdByEmail?: string;
   createdAt: Date;
   updatedAt: Date;
   teamMembers: {
