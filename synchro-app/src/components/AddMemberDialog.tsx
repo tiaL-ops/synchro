@@ -15,20 +15,21 @@ import {
   Typography
 } from '@mui/material';
 import { findUserByEmail } from '../services/userService';
+import { createInvitation } from '../services/invitationService';
 import { User } from '../types';
 
 interface AddMemberDialogProps {
   open: boolean;
   project: any;
   onClose: () => void;
-  onAddMember: (userId: string, userEmail: string, role: 'Member' | 'Viewer') => void;
+  onInvitationSent?: () => void; // Optional callback for when invitation is sent
 }
 
 const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
   open,
   project,
   onClose,
-  onAddMember
+  onInvitationSent
 }) => {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'Member' | 'Viewer'>('Member');
@@ -135,15 +136,35 @@ const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
     }
   };
 
-  const handleAdd = () => {
-    if (foundUser) {
-      onAddMember(foundUser.uid, foundUser.email, role);
-      setEmail('');
-      setRole('Member');
-      setFoundUser(null);
-      setError('');
-      // Clear local cache after successful addition
-      emailLookupCache.current.clear();
+  const handleAdd = async () => {
+    if (foundUser && project) {
+      try {
+        // Create invitation instead of directly adding member
+        await createInvitation(
+          project.id,
+          project.projectName,
+          project.createdBy, // Current user (inviter)
+          project.createdByEmail || 'Unknown', // Current user email
+          foundUser.uid,
+          foundUser.email,
+          role
+        );
+        
+        // Call optional callback for UI updates
+        if (onInvitationSent) {
+          onInvitationSent();
+        }
+        
+        setEmail('');
+        setRole('Member');
+        setFoundUser(null);
+        setError('');
+        // Clear local cache after successful invitation
+        emailLookupCache.current.clear();
+      } catch (error) {
+        console.error('Error creating invitation:', error);
+        setError('Failed to send invitation. Please try again.');
+      }
     }
   };
 
@@ -247,7 +268,7 @@ const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
           variant="contained"
           disabled={!foundUser}
         >
-          Add Member
+          Send Invitation
         </Button>
       </DialogActions>
     </Dialog>

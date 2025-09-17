@@ -12,6 +12,7 @@ service cloud.firestore {
     }
     
     // Projects - users can read projects they're members of, and write if they're the owner
+    // Also allow users to add themselves when accepting invitations
     match /projects/{projectId} {
       allow read: if request.auth != null && 
         (request.auth.uid in resource.data.teamMembers.keys() || 
@@ -22,7 +23,10 @@ service cloud.firestore {
       
       allow update: if request.auth != null && 
         (request.auth.uid == resource.data.createdBy || 
-         request.auth.uid in resource.data.teamMembers.keys());
+         request.auth.uid in resource.data.teamMembers.keys() ||
+         // Allow users to add themselves to projects (for invitation acceptance)
+         (request.auth.uid in request.resource.data.teamMembers.keys() &&
+          !(request.auth.uid in resource.data.teamMembers.keys())));
       
       allow delete: if request.auth != null && 
         request.auth.uid == resource.data.createdBy;
@@ -54,6 +58,27 @@ service cloud.firestore {
     
     // Allow collection queries for tasks (needed for getUserTasks)
     match /tasks/{document=**} {
+      allow read: if request.auth != null;
+    }
+    
+    // Invitations - users can read invitations sent to them, and create invitations for projects they own
+    match /invitations/{invitationId} {
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.invitedTo;
+      
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.invitedBy;
+      
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.invitedTo;
+      
+      allow delete: if request.auth != null && 
+        (request.auth.uid == resource.data.invitedBy || 
+         request.auth.uid == resource.data.invitedTo);
+    }
+    
+    // Allow collection queries for invitations (needed for getUserInvitations)
+    match /invitations/{document=**} {
       allow read: if request.auth != null;
     }
   }

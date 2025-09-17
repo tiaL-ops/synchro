@@ -24,7 +24,7 @@ import {
   ExitToApp
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserProjects, updateProject, addProjectMember } from '../services/projectService';
+import { getUserProjects, updateProject } from '../services/projectService';
 import { getUserTasks, createTask } from '../services/taskService';
 import { Project, Task } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -33,6 +33,7 @@ import TaskList from '../components/TaskList';
 import EditProjectDialog from '../components/EditProjectDialog';
 import AddMemberDialog from '../components/AddMemberDialog';
 import AddTaskDialog from '../components/AddTaskDialog';
+import InvitationNotification from '../components/InvitationNotification';
 
 const Dashboard: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -182,21 +183,9 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleAddMember = async (userId: string, userEmail: string, role: 'Member' | 'Viewer') => {
-    if (!selectedProject) return;
-    
-    try {
-      await addProjectMember(selectedProject.id, userId, userEmail, role);
-      
-      const updatedProjects = await getUserProjects(user!.uid);
-      setProjects(updatedProjects);
-      
-      setAddMemberDialog(false);
-      showSnackbar('Team member added successfully!', 'success');
-    } catch (error) {
-      console.error('Error adding team member:', error);
-      showSnackbar('Failed to add team member', 'error');
-    }
+  const handleInvitationSent = () => {
+    setAddMemberDialog(false);
+    showSnackbar('Invitation sent successfully!', 'success');
   };
 
   const handleAddTask = async () => {
@@ -292,6 +281,9 @@ const Dashboard: React.FC = () => {
           </Typography>
         </Box>
 
+        {/* Invitation Notifications */}
+        <InvitationNotification />
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
@@ -379,7 +371,7 @@ const Dashboard: React.FC = () => {
         open={addMemberDialog}
         project={selectedProject}
         onClose={() => setAddMemberDialog(false)}
-        onAddMember={handleAddMember}
+        onInvitationSent={handleInvitationSent}
       />
 
       <AddTaskDialog

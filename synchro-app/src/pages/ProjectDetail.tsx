@@ -113,6 +113,20 @@ const ProjectDetail: React.FC = () => {
     handleClose();
   };
 
+  const handleLeaveProject = async () => {
+    if (!project || !user) return;
+    
+    try {
+      await removeProjectMember(project.id, user.uid);
+      
+      // Navigate back to dashboard after leaving
+      navigate('/dashboard');
+    } catch (error) {
+      setError('Failed to leave project');
+      console.error('Error leaving project:', error);
+    }
+  };
+
   const handleAddMember = async () => {
     if (!project || !newMemberEmail.trim()) return;
     
@@ -325,6 +339,7 @@ const ProjectDetail: React.FC = () => {
               createdBy={project.createdBy}
               currentUserId={user?.uid || ''}
               onRemoveMember={isOwner ? (userId) => removeProjectMember(project.id, userId) : undefined}
+              onLeaveProject={!isOwner && isMember ? handleLeaveProject : undefined}
               formatDate={formatDate}
             />
           </CardContent>

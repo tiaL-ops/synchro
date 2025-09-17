@@ -14,6 +14,7 @@ import './utils/indexTest'; // Import for browser console testing
 import './utils/debugUserLookup'; // Import for user lookup debugging
 import './utils/debugFirestoreUsers'; // Import for Firestore users debugging
 import './utils/debugUserCache'; // Import for user cache debugging
+import './utils/debugInvitations'; // Import for invitation debugging
 
 const theme = createTheme({
   palette: {

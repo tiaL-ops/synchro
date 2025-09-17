@@ -9,7 +9,7 @@ import {
   Typography,
   Box
 } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { Delete, ExitToApp } from '@mui/icons-material';
 import { getUserById } from '../services/userService';
 import { User } from '../types';
 
@@ -23,6 +23,7 @@ interface TeamMembersDetailProps {
   createdBy: string;
   currentUserId: string;
   onRemoveMember?: (userId: string) => void;
+  onLeaveProject?: () => void;
   formatDate: (date: Date | undefined | null) => string;
 }
 
@@ -31,6 +32,7 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
   createdBy,
   currentUserId,
   onRemoveMember,
+  onLeaveProject,
   formatDate
 }) => {
   const [memberDetails, setMemberDetails] = useState<{ [userId: string]: User }>({});
@@ -125,17 +127,27 @@ const TeamMembersDetail: React.FC<TeamMembersDetailProps> = ({
                 }
                 secondary={`${member.role} • Joined ${formatDate(member.joinedAt)}`}
               />
-              {isOwner && userId !== currentUserId && onRemoveMember && (
-                <ListItemSecondaryAction>
+              <ListItemSecondaryAction>
+                {isOwner && userId !== currentUserId && onRemoveMember ? (
                   <IconButton
                     edge="end"
                     onClick={() => onRemoveMember(userId)}
                     title="Remove member"
+                    color="error"
                   >
                     <Delete />
                   </IconButton>
-                </ListItemSecondaryAction>
-              )}
+                ) : isCurrentUser && !isProjectOwner && onLeaveProject ? (
+                  <IconButton
+                    edge="end"
+                    onClick={onLeaveProject}
+                    title="Leave project"
+                    color="warning"
+                  >
+                    <ExitToApp />
+                  </IconButton>
+                ) : null}
+              </ListItemSecondaryAction>
             </ListItem>
           );
         })}
