@@ -45,6 +45,9 @@ export interface Task {
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  priority?: 'High' | 'Medium' | 'Low';
+  estimatedHours?: number;
+  category?: string;
 }
 
 // Auth context types

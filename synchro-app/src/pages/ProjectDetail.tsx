@@ -43,11 +43,12 @@ import {
   Edit,
   Delete,
   PersonAdd,
-  Assignment
+  Assignment,
+  AutoAwesome
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { getProject, updateProject, addProjectMember, removeProjectMember } from '../services/projectService';
-import { getProjectTasks, createTask, updateTask, deleteTask } from '../services/taskService';
+import { getProjectTasks, createTask, updateTask, deleteTask, getProjectTaskCount } from '../services/taskService';
 import { getUserById } from '../services/userService';
 import { Project, Task } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -55,6 +56,7 @@ import TeamMembersDetail from '../components/TeamMembersDetail';
 import PendingInvitationsList from '../components/PendingInvitationsList';
 import AddMemberDropdownDialog from '../components/AddMemberDropdownDialog';
 import EditTaskDialog from '../components/EditTaskDialog';
+import AITaskGenerator from '../components/AITaskGenerator';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,12 +68,14 @@ const ProjectDetail: React.FC = () => {
   const [error, setError] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [assigneeDetails, setAssigneeDetails] = useState<{ [userId: string]: any }>({});
+  const [taskCount, setTaskCount] = useState<number>(0);
   
   // Dialog states
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
   const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [aiTaskGeneratorOpen, setAiTaskGeneratorOpen] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newTask, setNewTask] = useState({
     title: '',
@@ -236,6 +240,26 @@ const ProjectDetail: React.FC = () => {
       } catch (error) {
         console.error('Error refreshing tasks:', error);
       }
+    }
+  };
+
+  const loadProjectData = async () => {
+    if (!id || !user) return;
+    
+    try {
+      const [projectData, projectTasks, projectTaskCount] = await Promise.all([
+        getProject(id),
+        getProjectTasks(id),
+        getProjectTaskCount(id)
+      ]);
+      
+      if (projectData) {
+        setProject(projectData);
+        setTasks(projectTasks);
+        setTaskCount(projectTaskCount);
+      }
+    } catch (error) {
+      console.error('Error loading project data:', error);
     }
   };
 
@@ -452,18 +476,49 @@ const ProjectDetail: React.FC = () => {
 
         {/* Task Board */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5" gutterBottom>
-            Task Board
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="h5" gutterBottom>
+              Task Board
+            </Typography>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              p: 1,
+              backgroundColor: taskCount >= 100 ? 'error.50' : 'info.50',
+              borderRadius: 1,
+              border: `1px solid ${taskCount >= 100 ? 'error.main' : 'info.main'}`
+            }}>
+              <Typography 
+                variant="body2" 
+                color={taskCount >= 100 ? 'error.main' : 'info.main'}
+                sx={{ fontWeight: 'medium' }}
+              >
+                {taskCount}/100
+              </Typography>
+            </Box>
+          </Box>
           {isMember && (
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => setAddTaskDialogOpen(true)}
-              size="small"
-            >
-              Add Task
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                startIcon={<AutoAwesome />}
+                onClick={() => setAiTaskGeneratorOpen(true)}
+                size="small"
+                color="secondary"
+                disabled={taskCount >= 100}
+              >
+                AI Generate
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => setAddTaskDialogOpen(true)}
+                size="small"
+                disabled={taskCount >= 100}
+              >
+                Add Task
+              </Button>
+            </Box>
           )}
         </Box>
         
@@ -714,6 +769,19 @@ const ProjectDetail: React.FC = () => {
         project={project ? { createdBy: project.createdBy, createdByEmail: project.createdByEmail } : undefined}
         onClose={() => setEditTaskDialogOpen(false)}
         onTaskUpdated={handleTaskUpdated}
+      />
+
+      {/* AI Task Generator Dialog */}
+      <AITaskGenerator
+        open={aiTaskGeneratorOpen}
+        onClose={() => setAiTaskGeneratorOpen(false)}
+        project={project}
+        onTasksGenerated={(taskCount) => {
+          // Refresh tasks after AI generation
+          if (id && user) {
+            loadProjectData();
+          }
+        }}
       />
     </Box>
   );

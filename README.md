@@ -14,6 +14,13 @@ This is a Day-1 MVP that enables:
 
 ### Features
 
+#### AI-Powered Task Generation
+- **Gemini AI Integration**: Automatically generates actionable tasks from project goals
+- **Smart Task Breakdown**: Creates 8-15 specific, manageable tasks
+- **Priority Assignment**: AI assigns High/Medium/Low priorities based on project context
+- **Time Estimation**: Provides estimated hours for each task
+- **Category Organization**: Groups tasks by type (Planning, Development, Testing, etc.)
+
 #### Authentication
 - **Google Sign-In**: Quick authentication with Google accounts
 - **Email/Password**: Traditional email-based authentication
@@ -82,6 +89,7 @@ synchro-app/
 - Node.js (v16 or higher)
 - npm or yarn
 - Firebase account
+- Gemini API key (optional, for AI task generation)
 
 ### 1. Clone and Install
 
@@ -124,14 +132,30 @@ const firebaseConfig = {
 };
 ```
 
-### 4. Deploy Security Rules
+### 4. Set up Gemini AI (Optional)
+
+To enable AI-powered task generation:
+
+1. **Get Gemini API Key**:
+   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+   - Copy the API key
+
+2. **Configure Environment Variables**:
+   - Create a `.env` file in the `synchro-app` directory:
+     ```bash
+     REACT_APP_GEMINI_API_KEY=your_gemini_api_key_here
+     ```
+   - Without the API key, the AI task generation will use fallback tasks
+
+### 5. Deploy Security Rules
 
 ```bash
 # From the project root directory
 firebase deploy --only firestore:rules
 ```
 
-### 5. Run the Application
+### 6. Run the Application
 
 ```bash
 npm start

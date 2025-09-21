@@ -29,7 +29,18 @@ const convertTeamMembersTimestamps = (teamMembers: any) => {
   return convertedTeamMembers;
 };
 
-// Create a new project
+// Get user's project count
+export const getUserProjectCount = async (userId: string): Promise<number> => {
+  try {
+    const projects = await getUserProjects(userId);
+    return projects.length;
+  } catch (error) {
+    console.error('Error getting user project count:', error);
+    return 0;
+  }
+};
+
+// Create a new project (no limit on number of projects)
 export const createProject = async (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
   try {
     const projectRef = await addDoc(collection(db, 'projects'), {

@@ -296,9 +296,19 @@ const Dashboard: React.FC = () => {
         <Grid container spacing={3}>
           {/* Projects Section */}
           <Grid item xs={12} md={8}>
-            <Typography variant="h5" gutterBottom>
-              Your Projects
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h5" gutterBottom>
+                Your Projects
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => navigate('/create-project')}
+                size="medium"
+              >
+                Create New Project
+              </Button>
+            </Box>
             {projects.length === 0 ? (
               <Card>
                 <CardContent sx={{ textAlign: 'center', py: 6 }}>
@@ -385,6 +395,20 @@ const Dashboard: React.FC = () => {
         onSave={handleAddTask}
         onFormChange={(field, value) => setNewTask({ ...newTask, [field]: value })}
       />
+
+      {/* Create Project FAB */}
+      <Fab
+        color="primary"
+        aria-label="create project"
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+        }}
+        onClick={() => navigate('/create-project')}
+      >
+        <Add />
+      </Fab>
 
       {/* Snackbar */}
       <Snackbar

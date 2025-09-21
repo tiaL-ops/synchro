@@ -14,9 +14,31 @@ import {
 import { db } from './firebase';
 import { Task } from '../types';
 
-// Create a new task
+// Get task count for a project
+export const getProjectTaskCount = async (projectId: string): Promise<number> => {
+  try {
+    const q = query(
+      collection(db, 'tasks'),
+      where('projectId', '==', projectId)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.size;
+  } catch (error) {
+    console.error('Error getting project task count:', error);
+    return 0;
+  }
+};
+
+// Create a new task with 100-task limit per project
 export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
   try {
+    // Check if project has reached the 100-task limit
+    const projectTaskCount = await getProjectTaskCount(taskData.projectId);
+    
+    if (projectTaskCount >= 100) {
+      throw new Error('This project has reached the maximum limit of 100 tasks. Please delete some existing tasks before creating new ones.');
+    }
+    
     const taskRef = await addDoc(collection(db, 'tasks'), {
       ...taskData,
       createdAt: serverTimestamp(),
