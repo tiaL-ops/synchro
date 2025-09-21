@@ -131,3 +131,81 @@ export const getCacheStats = () => {
     expiredEntries: userCache.size - validEntries
   };
 };
+
+// Search users by partial email or name
+export const searchUsers = async (searchTerm: string, limit: number = 10): Promise<User[]> => {
+  try {
+    const cleanSearchTerm = searchTerm.toLowerCase().trim();
+    
+    if (cleanSearchTerm.length < 2) {
+      return []; // Don't search for terms shorter than 2 characters
+    }
+    
+    console.log('Searching users with term:', cleanSearchTerm);
+    
+    // Search by email (partial match)
+    const emailQuery = query(
+      collection(db, 'users'),
+      where('email', '>=', cleanSearchTerm),
+      where('email', '<=', cleanSearchTerm + '\uf8ff')
+    );
+    
+    const emailSnapshot = await getDocs(emailQuery);
+    
+    const users: User[] = [];
+    const seenUids = new Set<string>();
+    
+    // Process email matches
+    emailSnapshot.forEach((doc) => {
+      const data = doc.data();
+      const user: User = {
+        uid: doc.id,
+        email: data.email || '',
+        displayName: data.displayName || '',
+        preferences: data.preferences || {},
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date()
+      };
+      
+      if (!seenUids.has(user.uid)) {
+        users.push(user);
+        seenUids.add(user.uid);
+      }
+    });
+    
+    // If we have fewer results than the limit, also search by displayName
+    if (users.length < limit) {
+      const nameQuery = query(
+        collection(db, 'users'),
+        where('displayName', '>=', cleanSearchTerm),
+        where('displayName', '<=', cleanSearchTerm + '\uf8ff')
+      );
+      
+      const nameSnapshot = await getDocs(nameQuery);
+      
+      nameSnapshot.forEach((doc) => {
+        const data = doc.data();
+        const user: User = {
+          uid: doc.id,
+          email: data.email || '',
+          displayName: data.displayName || '',
+          preferences: data.preferences || {},
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date()
+        };
+        
+        if (!seenUids.has(user.uid) && users.length < limit) {
+          users.push(user);
+          seenUids.add(user.uid);
+        }
+      });
+    }
+    
+    console.log('Search result:', users.length, 'users found');
+    return users.slice(0, limit);
+    
+  } catch (error) {
+    console.error('Error searching users:', error);
+    return [];
+  }
+};

@@ -424,6 +424,21 @@ const ProjectDetail: React.FC = () => {
             />
 
             {/* Team Members */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Team Members
+              </Typography>
+              {isOwner && (
+                <Button
+                  variant="outlined"
+                  startIcon={<PersonAdd />}
+                  onClick={() => setAddMemberDialogOpen(true)}
+                  size="small"
+                >
+                  Add Member
+                </Button>
+              )}
+            </Box>
             <TeamMembersDetail
               teamMembers={project.teamMembers}
               createdBy={project.createdBy}
@@ -436,9 +451,21 @@ const ProjectDetail: React.FC = () => {
         </Card>
 
         {/* Task Board */}
-        <Typography variant="h5" gutterBottom>
-          Task Board
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" gutterBottom>
+            Task Board
+          </Typography>
+          {isMember && (
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => setAddTaskDialogOpen(true)}
+              size="small"
+            >
+              Add Task
+            </Button>
+          )}
+        </Box>
         
         <Grid container spacing={2}>
           {Object.entries(tasksByStatus).map(([status, statusTasks]) => {
