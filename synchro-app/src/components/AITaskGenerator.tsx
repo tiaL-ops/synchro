@@ -222,7 +222,8 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
         goal: project.goal,
         projectType,
         teamSize: calculatedTeamSize,
-        timeline: calculatedTimeline
+        timeline: calculatedTimeline,
+        projectDeadline: project.deadline
       };
 
       const tasks = await generateProjectTasks(request);
@@ -292,7 +293,8 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
             createdBy: user.uid,
             priority: task.priority,
             estimatedHours: task.estimatedHours,
-            category: task.category
+            category: task.category,
+            dueDate: task.suggestedDueDate
           });
           createdCount++;
         } catch (error) {

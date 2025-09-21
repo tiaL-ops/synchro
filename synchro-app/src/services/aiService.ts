@@ -9,6 +9,9 @@ export interface GeneratedTask {
   priority: 'High' | 'Medium' | 'Low';
   estimatedHours?: number;
   category?: string;
+  suggestedStartDate?: Date;
+  suggestedDueDate?: Date;
+  dependencies?: string[]; // Task titles this depends on
 }
 
 export interface TaskGenerationRequest {
@@ -17,6 +20,7 @@ export interface TaskGenerationRequest {
   projectType?: string;
   teamSize?: string;
   timeline?: string;
+  projectDeadline?: Date; // Project end date for intelligent scheduling
 }
 
 /**
@@ -166,6 +170,83 @@ const detectTechnicalRequirements = (goal: string): string[] => {
   if (text.includes('deliverable') || text.includes('outcome') || text.includes('result')) requirements.push('Deliverable Management');
   
   return requirements;
+};
+
+/**
+ * Calculate intelligent task scheduling based on priority and dependencies
+ */
+const calculateTaskScheduling = (tasks: GeneratedTask[], projectDeadline?: Date): GeneratedTask[] => {
+  const now = new Date();
+  const deadline = projectDeadline || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
+  const totalProjectDays = Math.ceil((deadline.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  
+  // Sort tasks by priority (High -> Medium -> Low) and category for logical flow
+  const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+  const sortedTasks = [...tasks].sort((a, b) => {
+    // First by priority
+    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+    
+    // Then by logical category order
+    const categoryOrder = {
+      'Research': 0, 'Planning': 1, 'Content Creation': 2, 'Academic Writing': 3,
+      'Development': 4, 'Design': 5, 'Preparation': 6, 'Presentation': 7,
+      'Testing': 8, 'Quality Assurance': 9, 'Documentation': 10
+    };
+    const aCategoryOrder = categoryOrder[a.category as keyof typeof categoryOrder] ?? 99;
+    const bCategoryOrder = categoryOrder[b.category as keyof typeof categoryOrder] ?? 99;
+    return aCategoryOrder - bCategoryOrder;
+  });
+
+  // Calculate scheduling
+  let currentDate = new Date(now);
+  const scheduledTasks: GeneratedTask[] = [];
+  
+  // Reserve buffer time based on priority
+  const bufferDays = Math.max(2, Math.floor(totalProjectDays * 0.1)); // 10% buffer, min 2 days
+  const workingDeadline = new Date(deadline.getTime() - bufferDays * 24 * 60 * 60 * 1000);
+  
+  for (const task of sortedTasks) {
+    const taskDurationDays = Math.ceil((task.estimatedHours || 4) / 8); // Assume 8 work hours per day
+    
+    // Adjust start date based on priority
+    let startDate = new Date(currentDate);
+    if (task.priority === 'High') {
+      // High priority tasks start immediately or with minimal delay
+      startDate = new Date(Math.max(currentDate.getTime(), now.getTime()));
+    } else if (task.priority === 'Medium') {
+      // Medium priority tasks can wait a bit
+      startDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // +1 day
+    } else {
+      // Low priority tasks wait until later
+      startDate = new Date(currentDate.getTime() + 2 * 24 * 60 * 60 * 1000); // +2 days
+    }
+    
+    const dueDate = new Date(startDate.getTime() + taskDurationDays * 24 * 60 * 60 * 1000);
+    
+    // Ensure we don't exceed the working deadline
+    if (dueDate > workingDeadline) {
+      const adjustedDueDate = new Date(workingDeadline);
+      const adjustedStartDate = new Date(adjustedDueDate.getTime() - taskDurationDays * 24 * 60 * 60 * 1000);
+      
+      scheduledTasks.push({
+        ...task,
+        suggestedStartDate: adjustedStartDate > now ? adjustedStartDate : now,
+        suggestedDueDate: adjustedDueDate
+      });
+    } else {
+      scheduledTasks.push({
+        ...task,
+        suggestedStartDate: startDate,
+        suggestedDueDate: dueDate
+      });
+      
+      // Update current date for next task
+      currentDate = new Date(dueDate.getTime() + 24 * 60 * 60 * 1000); // +1 day buffer between tasks
+    }
+  }
+  
+  return scheduledTasks;
 };
 
 /**
@@ -336,13 +417,19 @@ Return only the JSON array, no additional text.
     });
 
     console.log('Generated tasks:', validatedTasks);
-    return validatedTasks;
+    
+    // Apply intelligent scheduling
+    const scheduledTasks = calculateTaskScheduling(validatedTasks, request.projectDeadline);
+    console.log('Scheduled tasks:', scheduledTasks);
+    
+    return scheduledTasks;
 
   } catch (error) {
     console.error('Error generating tasks with AI:', error);
     
     // Return fallback tasks if AI fails
-    return getFallbackTasks(request);
+    const fallbackTasks = getFallbackTasks(request);
+    return calculateTaskScheduling(fallbackTasks, request.projectDeadline);
   }
 };
 

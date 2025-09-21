@@ -31,7 +31,9 @@ import {
   Paper,
   FormControl,
   InputLabel,
-  Select
+  Select,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   ArrowBack,
@@ -44,7 +46,9 @@ import {
   Delete,
   PersonAdd,
   Assignment,
-  AutoAwesome
+  AutoAwesome,
+  ViewKanban,
+  Timeline
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { getProject, updateProject, addProjectMember, removeProjectMember } from '../services/projectService';
@@ -57,6 +61,7 @@ import PendingInvitationsList from '../components/PendingInvitationsList';
 import AddMemberDropdownDialog from '../components/AddMemberDropdownDialog';
 import EditTaskDialog from '../components/EditTaskDialog';
 import AITaskGenerator from '../components/AITaskGenerator';
+import TaskRoadmap from '../components/TaskRoadmap';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -77,6 +82,7 @@ const ProjectDetail: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [aiTaskGeneratorOpen, setAiTaskGeneratorOpen] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [currentView, setCurrentView] = useState<'board' | 'roadmap'>('board');
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -183,7 +189,8 @@ const ProjectDetail: React.FC = () => {
         status: 'To Do' as const,
         assignedTo: newTask.assignedTo && newTask.assignedTo.trim() ? newTask.assignedTo : undefined,
         dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
-        createdBy: user!.uid
+        createdBy: user!.uid,
+        priority: 'Medium' as const // Default priority for manually created tasks
       };
       
       await createTask(taskData);
@@ -478,7 +485,7 @@ const ProjectDetail: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="h5" gutterBottom>
-              Task Board
+              Task Management
             </Typography>
             <Box sx={{ 
               display: 'flex', 
@@ -521,8 +528,32 @@ const ProjectDetail: React.FC = () => {
             </Box>
           )}
         </Box>
-        
-        <Grid container spacing={2}>
+
+        {/* View Switcher */}
+        <Box sx={{ mb: 3 }}>
+          <Tabs 
+            value={currentView} 
+            onChange={(_, newValue) => setCurrentView(newValue)}
+            sx={{ borderBottom: 1, borderColor: 'divider' }}
+          >
+            <Tab 
+              icon={<ViewKanban />} 
+              label="Kanban Board" 
+              value="board"
+              iconPosition="start"
+            />
+            <Tab 
+              icon={<Timeline />} 
+              label="Timeline Roadmap" 
+              value="roadmap"
+              iconPosition="start"
+            />
+          </Tabs>
+        </Box>
+
+        {/* Task Board View */}
+        {currentView === 'board' && (
+          <Grid container spacing={2}>
           {Object.entries(tasksByStatus).map(([status, statusTasks]) => {
             const currentStatus = status as 'To Do' | 'In Progress' | 'Review' | 'Done';
             return (
@@ -618,6 +649,15 @@ const ProjectDetail: React.FC = () => {
             );
           })}
         </Grid>
+        )}
+
+        {/* Timeline Roadmap View */}
+        {currentView === 'roadmap' && (
+          <TaskRoadmap 
+            tasks={tasks} 
+            projectDeadline={project?.deadline}
+          />
+        )}
 
         {/* Add Task FAB */}
         {isMember && (
