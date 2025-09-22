@@ -632,7 +632,7 @@ const ProjectDetail: React.FC = () => {
                           ✓ Task completed
                         </Typography>
                       )}
-                      {isOwner && (
+                      {isMember && (
                         <IconButton
                           size="small"
                           onClick={() => handleDeleteTask(task.id)}

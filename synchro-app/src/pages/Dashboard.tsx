@@ -34,6 +34,7 @@ import EditProjectDialog from '../components/EditProjectDialog';
 import AddMemberDialog from '../components/AddMemberDialog';
 import AddTaskDialog from '../components/AddTaskDialog';
 import InvitationNotification from '../components/InvitationNotification';
+import EmailNotifications from '../components/EmailNotifications';
 
 const Dashboard: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -99,6 +100,10 @@ const Dashboard: React.FC = () => {
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleTaskClick = (task: Task) => {
+    navigate(`/project/${task.projectId}`);
   };
 
   const handleLogout = async () => {
@@ -286,6 +291,9 @@ const Dashboard: React.FC = () => {
 
         {/* Invitation Notifications */}
         <InvitationNotification />
+        
+        {/* Email Notifications (Development Mode) */}
+        <EmailNotifications />
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -352,6 +360,7 @@ const Dashboard: React.FC = () => {
               tasks={tasks}
               formatDate={formatDate}
               getTaskStatusColor={getTaskStatusColor}
+              onTaskClick={handleTaskClick}
             />
           </Grid>
         </Grid>

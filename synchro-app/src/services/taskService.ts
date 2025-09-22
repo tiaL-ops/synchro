@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Task } from '../types';
+import { emailService } from './emailService';
 
 // Get task count for a project
 export const getProjectTaskCount = async (projectId: string): Promise<number> => {
@@ -44,6 +45,47 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    
+    // Send email notification if task is assigned to someone
+    if (taskData.assignedTo || (taskData.assignedToUsers && taskData.assignedToUsers.length > 0)) {
+      try {
+        // Get project details for email
+        const projectDoc = await getDoc(doc(db, 'projects', taskData.projectId));
+        const project = projectDoc.data();
+        
+        if (project) {
+          // Get creator details
+          const creatorDoc = await getDoc(doc(db, 'users', taskData.createdBy));
+          const creatorData = creatorDoc.data();
+          
+          // Get assignee details
+          const assigneeIds = taskData.assignedToUsers || [taskData.assignedTo];
+          for (const assigneeId of assigneeIds) {
+            if (assigneeId) {
+              const assigneeDoc = await getDoc(doc(db, 'users', assigneeId));
+              const assigneeData = assigneeDoc.data();
+              
+              if (assigneeData?.email) {
+                await emailService.sendTaskAssignmentEmail({
+                  assigneeEmail: assigneeData.email,
+                  taskTitle: taskData.title,
+                  taskDescription: taskData.description,
+                  projectName: project.projectName,
+                  createdByEmail: creatorData?.email || 'Unknown',
+                  priority: taskData.priority,
+                  dueDate: taskData.dueDate,
+                  projectId: taskData.projectId
+                });
+              }
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error('Failed to send task assignment email:', emailError);
+        // Don't fail the task creation if email fails
+      }
+    }
+    
     return taskRef.id;
   } catch (error) {
     throw error;
@@ -169,11 +211,47 @@ export const getTask = async (taskId: string): Promise<Task | null> => {
 // Update a task
 export const updateTask = async (taskId: string, updateData: Partial<Task>): Promise<void> => {
   try {
+    // Get current task data to check for status changes
+    const currentTaskDoc = await getDoc(doc(db, 'tasks', taskId));
+    const currentTask = currentTaskDoc.data();
+    
     const taskRef = doc(db, 'tasks', taskId);
     await updateDoc(taskRef, {
       ...updateData,
       updatedAt: serverTimestamp()
     });
+    
+    // Send email notification if task was completed
+    if (currentTask && updateData.status === 'Done' && currentTask.status !== 'Done') {
+      try {
+        // Get project details
+        const projectDoc = await getDoc(doc(db, 'projects', currentTask.projectId));
+        const project = projectDoc.data();
+        
+        if (project) {
+          // Get task creator details
+          const creatorDoc = await getDoc(doc(db, 'users', currentTask.createdBy));
+          const creatorData = creatorDoc.data();
+          
+          // Get project owner details
+          const ownerDoc = await getDoc(doc(db, 'users', project.createdBy));
+          const ownerData = ownerDoc.data();
+          
+          if (ownerData?.email) {
+            await emailService.sendTaskCompletionEmail({
+              ownerEmail: ownerData.email,
+              taskTitle: currentTask.title,
+              projectName: project.projectName,
+              completedByEmail: creatorData?.email || 'Unknown',
+              projectId: currentTask.projectId
+            });
+          }
+        }
+      } catch (emailError) {
+        console.error('Failed to send task completion email:', emailError);
+        // Don't fail the task update if email fails
+      }
+    }
   } catch (error) {
     throw error;
   }

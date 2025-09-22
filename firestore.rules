@@ -53,7 +53,8 @@ service cloud.firestore {
          request.auth.uid == get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.createdBy);
       
       allow delete: if request.auth != null && 
-        request.auth.uid == get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.createdBy;
+        (request.auth.uid == get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.createdBy ||
+         request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.teamMembers.keys());
     }
     
     // Allow collection queries for tasks (needed for getUserTasks)

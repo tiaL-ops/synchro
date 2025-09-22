@@ -11,6 +11,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { emailService } from './emailService';
 
 export interface Invitation {
   id: string;
@@ -62,6 +63,20 @@ export const createInvitation = async (
 
     const docRef = await addDoc(collection(db, 'invitations'), invitationData);
     console.log('✅ Invitation created with ID:', docRef.id);
+    
+    // Send email notification
+    try {
+      await emailService.sendInvitationEmail({
+        invitedToEmail: invitedToEmail,
+        invitedByEmail: invitedByEmail,
+        projectName: projectName,
+        role: role
+      });
+    } catch (emailError) {
+      console.error('Failed to send invitation email:', emailError);
+      // Don't fail the invitation creation if email fails
+    }
+    
     return docRef.id;
   } catch (error) {
     console.error('❌ Error creating invitation:', error);
