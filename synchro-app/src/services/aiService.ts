@@ -21,7 +21,245 @@ export interface TaskGenerationRequest {
   teamSize?: string;
   timeline?: string;
   projectDeadline?: Date; // Project end date for intelligent scheduling
+  clarificationAnswers?: ClarificationAnswer[]; // Additional details from clarification questions
 }
+
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  type: 'text' | 'select' | 'multiselect';
+  options?: string[];
+  required: boolean;
+  category: 'scope' | 'deliverables' | 'timeline' | 'resources' | 'audience';
+}
+
+export interface ClarificationAnswer {
+  questionId: string;
+  answer: string | string[];
+}
+
+/**
+ * Analyze if a project goal needs clarification questions
+ */
+export const analyzeGoalSpecificity = (goal: string, projectName: string): {
+  needsClarification: boolean;
+  specificityScore: number;
+  missingElements: string[];
+} => {
+  const text = goal.toLowerCase();
+  let specificityScore = 0;
+  const missingElements: string[] = [];
+
+  // Check for specific deliverables
+  const deliverableIndicators = [
+    'create', 'build', 'develop', 'design', 'write', 'make', 'produce',
+    'presentation', 'document', 'report', 'app', 'website', 'system',
+    'video', 'article', 'poster', 'demo', 'prototype'
+  ];
+  const hasDeliverable = deliverableIndicators.some(indicator => text.includes(indicator));
+  if (hasDeliverable) specificityScore += 20;
+  else missingElements.push('specific deliverable');
+
+  // Check for target audience
+  const audienceIndicators = [
+    'for', 'targeting', 'audience', 'users', 'customers', 'students',
+    'clients', 'team', 'class', 'professor', 'manager'
+  ];
+  const hasAudience = audienceIndicators.some(indicator => text.includes(indicator));
+  if (hasAudience) specificityScore += 15;
+  else missingElements.push('target audience');
+
+  // Check for specific requirements or constraints
+  const requirementIndicators = [
+    'must', 'should', 'need', 'require', 'include', 'feature',
+    'deadline', 'by', 'pages', 'minutes', 'slides', 'words'
+  ];
+  const hasRequirements = requirementIndicators.some(indicator => text.includes(indicator));
+  if (hasRequirements) specificityScore += 15;
+  else missingElements.push('specific requirements');
+
+  // Check for domain-specific details
+  const domainIndicators = [
+    'research', 'analysis', 'study', 'investigate', 'explore',
+    'technical', 'business', 'academic', 'creative', 'scientific'
+  ];
+  const hasDomain = domainIndicators.some(indicator => text.includes(indicator));
+  if (hasDomain) specificityScore += 10;
+  else missingElements.push('domain context');
+
+  // Check for timeline or scope indicators
+  const scopeIndicators = [
+    'week', 'month', 'day', 'phase', 'stage', 'step',
+    'small', 'large', 'comprehensive', 'brief', 'detailed'
+  ];
+  const hasScope = scopeIndicators.some(indicator => text.includes(indicator));
+  if (hasScope) specificityScore += 10;
+  else missingElements.push('scope or timeline');
+
+  // Check for specific technologies or methods
+  const techIndicators = [
+    'using', 'with', 'technology', 'tool', 'method', 'approach',
+    'framework', 'language', 'platform', 'software'
+  ];
+  const hasTech = techIndicators.some(indicator => text.includes(indicator));
+  if (hasTech) specificityScore += 10;
+  else missingElements.push('specific tools or methods');
+
+  // Check goal length and detail
+  if (goal.length > 50) specificityScore += 10;
+  if (goal.length > 100) specificityScore += 5;
+  if (goal.length < 20) specificityScore -= 10;
+
+  // Check for vague words
+  const vagueWords = ['something', 'good', 'nice', 'better', 'improve', 'help', 'thing'];
+  const hasVagueWords = vagueWords.some(word => text.includes(word));
+  if (hasVagueWords) specificityScore -= 15;
+
+  const needsClarification = specificityScore < 40 || missingElements.length >= 4;
+  
+  return {
+    needsClarification,
+    specificityScore: Math.max(0, Math.min(100, specificityScore)),
+    missingElements
+  };
+};
+
+/**
+ * Generate clarification questions based on goal analysis
+ */
+export const generateClarificationQuestions = (
+  goal: string, 
+  projectName: string, 
+  projectType?: string
+): ClarificationQuestion[] => {
+  const analysis = analyzeGoalSpecificity(goal, projectName);
+  const questions: ClarificationQuestion[] = [];
+
+  // Always ask about deliverables if missing
+  if (analysis.missingElements.includes('specific deliverable')) {
+    questions.push({
+      id: 'deliverables',
+      question: `What specific deliverable(s) do you want to create for "${projectName}"?`,
+      type: 'multiselect',
+      options: [
+        'Written document/report',
+        'Presentation/slides',
+        'Website/web application',
+        'Mobile app',
+        'Video/multimedia content',
+        'Design/visual materials',
+        'Research paper/analysis',
+        'Prototype/demo',
+        'Other (please specify)'
+      ],
+      required: true,
+      category: 'deliverables'
+    });
+  }
+
+  // Ask about target audience if missing
+  if (analysis.missingElements.includes('target audience')) {
+    questions.push({
+      id: 'audience',
+      question: `Who is the target audience for "${projectName}"?`,
+      type: 'select',
+      options: [
+        'Students/classmates',
+        'Professors/instructors',
+        'General public',
+        'Business clients',
+        'Team members',
+        'Specific user group',
+        'Other (please specify)'
+      ],
+      required: true,
+      category: 'audience'
+    });
+  }
+
+  // Ask about scope and timeline
+  if (analysis.missingElements.includes('scope or timeline')) {
+    questions.push({
+      id: 'scope',
+      question: `What is the expected scope and timeline for "${projectName}"?`,
+      type: 'select',
+      options: [
+        'Small project (1-2 weeks)',
+        'Medium project (1 month)',
+        'Large project (2-3 months)',
+        'Long-term project (6+ months)',
+        'Flexible timeline',
+        'Other (please specify)'
+      ],
+      required: true,
+      category: 'scope'
+    });
+  }
+
+  // Ask about specific requirements
+  if (analysis.missingElements.includes('specific requirements')) {
+    questions.push({
+      id: 'requirements',
+      question: `Are there any specific requirements, constraints, or features that must be included?`,
+      type: 'text',
+      required: false,
+      category: 'deliverables'
+    });
+  }
+
+  // Ask about tools/methods if missing
+  if (analysis.missingElements.includes('specific tools or methods')) {
+    questions.push({
+      id: 'tools',
+      question: `What tools, technologies, or methods do you plan to use for "${projectName}"?`,
+      type: 'text',
+      required: false,
+      category: 'resources'
+    });
+  }
+
+  // Domain-specific questions based on project type
+  if (projectType === 'Academic' || projectType === 'Research') {
+    questions.push({
+      id: 'academic_requirements',
+      question: `What are the academic requirements (page count, citation style, presentation length, etc.)?`,
+      type: 'text',
+      required: false,
+      category: 'deliverables'
+    });
+  }
+
+  if (projectType === 'Creative/Design' || projectType === 'Media Production') {
+    questions.push({
+      id: 'creative_style',
+      question: `What style, format, or aesthetic are you aiming for?`,
+      type: 'text',
+      required: false,
+      category: 'deliverables'
+    });
+  }
+
+  if (projectType === 'Software Development' || projectType === 'Web Development') {
+    questions.push({
+      id: 'tech_stack',
+      question: `What technologies or programming languages do you want to use?`,
+      type: 'text',
+      required: false,
+      category: 'resources'
+    });
+  }
+
+  // Always ask one final clarifying question
+  questions.push({
+    id: 'additional_context',
+    question: `Is there anything else important about "${projectName}" that would help create better tasks?`,
+    type: 'text',
+    required: false,
+    category: 'scope'
+  });
+
+  return questions.slice(0, 4); // Limit to 4 questions max
+};
 
 /**
  * Extract key phrases and entities from project description
@@ -258,7 +496,7 @@ export const generateProjectTasks = async (request: TaskGenerationRequest): Prom
       throw new Error('Gemini API key not configured. Please set REACT_APP_GEMINI_API_KEY in your environment variables.');
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // Enhanced context extraction
     const projectContext = {
@@ -272,8 +510,21 @@ export const generateProjectTasks = async (request: TaskGenerationRequest): Prom
       // Identify project domain/industry
       domain: identifyProjectDomain(request.goal, request.projectType),
       // Detect technical requirements
-      techRequirements: detectTechnicalRequirements(request.goal)
+      techRequirements: detectTechnicalRequirements(request.goal),
+      // Include clarification answers if provided
+      clarificationAnswers: request.clarificationAnswers || []
     };
+
+    // Build clarification context
+    const clarificationContext = projectContext.clarificationAnswers.length > 0 
+      ? `\n\nADDITIONAL CLARIFICATION DETAILS:
+==============================
+${projectContext.clarificationAnswers.map(answer => {
+        const question = answer.questionId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const answerText = Array.isArray(answer.answer) ? answer.answer.join(', ') : answer.answer;
+        return `• ${question}: ${answerText}`;
+      }).join('\n')}`
+      : '';
 
     const prompt = `
 You are a UNIVERSAL project breakdown expert who can analyze ANY type of project - academic, creative, business, technical, culinary, research, or any other domain. Your job is to DEEPLY ANALYZE the specific project details and create a hyper-customized task breakdown.
@@ -290,25 +541,28 @@ EXTRACTED PROJECT CONTEXT:
 ==========================
 Key Phrases Identified: ${projectContext.keyPhrases.join(', ')}
 Detected Domain: ${projectContext.domain}
-Project Requirements: ${projectContext.techRequirements.join(', ')}
+Project Requirements: ${projectContext.techRequirements.join(', ')}${clarificationContext}
 
 UNIVERSAL PROJECT ANALYSIS REQUIREMENTS:
 =======================================
 1. READ EVERY WORD of the project goal/description above
-2. IDENTIFY the specific deliverables, outcomes, or end products mentioned
-3. EXTRACT key requirements whether they are: academic (research, presentations), creative (design, art), culinary (cooking, recipes), technical (coding, systems), business (marketing, sales), research (experiments, data), or any other domain
-4. UNDERSTAND the specific context and domain from the description
-5. RECOGNIZE the specific methods, tools, skills, or approaches needed
-6. ANALYZE what makes THIS project unique and what specific steps are needed
+2. CAREFULLY REVIEW all clarification details provided - these contain crucial specifics that make tasks more actionable
+3. IDENTIFY the specific deliverables, outcomes, or end products mentioned in both the goal AND clarification answers
+4. EXTRACT key requirements whether they are: academic (research, presentations), creative (design, art), culinary (cooking, recipes), technical (coding, systems), business (marketing, sales), research (experiments, data), or any other domain
+5. UNDERSTAND the specific context and domain from the description AND clarification details
+6. RECOGNIZE the specific methods, tools, skills, or approaches needed based on all provided information
+7. ANALYZE what makes THIS project unique and what specific steps are needed using ALL available context
 
 UNIVERSAL TASK GENERATION RULES:
 ===============================
 ❌ DO NOT create generic tasks like "Plan the project" or "Do research"
-✅ DO create tasks that reference SPECIFIC elements from the project description
+✅ DO create tasks that reference SPECIFIC elements from the project description AND clarification details
 ❌ DO NOT use placeholder text or generic examples
-✅ DO reference actual project name, specific deliverables, or requirements in task titles
+✅ DO reference actual project name, specific deliverables, requirements, and clarification answers in task titles
 ❌ DO NOT create broad tasks like "Create content"
 ✅ DO create specific tasks like "Research the history of ramen in post-WWII Japan for the presentation"
+✅ DO incorporate specific details from clarification answers (audience, tools, requirements, etc.) into task descriptions
+✅ DO make tasks so specific that they could ONLY apply to this exact project with its specific context
 
 DOMAIN-SPECIFIC EXAMPLES:
 ========================
@@ -334,24 +588,25 @@ For BUSINESS projects (like marketing, strategy):
 
 MANDATORY SPECIFICITY FOR THIS PROJECT:
 ======================================
-- EVERY task title must include specific terminology from the project description
+- EVERY task title must include specific terminology from the project description AND clarification details
 - Use the EXACT key phrases identified: ${projectContext.keyPhrases.join(', ')}
 - Reference the specific domain context: ${projectContext.domain}
 - Include project requirements where relevant: ${projectContext.techRequirements.join(', ')}
-- Quote specific deliverables, outcomes, or components mentioned in the project goal
-- Make tasks so specific that they could ONLY apply to this exact project
-- Break down the project into logical phases or categories based on the domain
+- Quote specific deliverables, outcomes, or components mentioned in the project goal AND clarification answers
+- Incorporate specific details from clarification answers (audience, tools, requirements, timeline, etc.)
+- Make tasks so specific that they could ONLY apply to this exact project with its specific context
+- Break down the project into logical phases or categories based on the domain and clarification details
 
 TASK BREAKDOWN REQUIREMENTS:
 ============================
 - Generate 12-20 MICRO-TASKS that are extremely specific to this project
 - Each task should be completable in 1-8 hours maximum
-- Tasks must directly quote or reference elements from the project description
-- Include specific domain-appropriate implementation details
-- Break down complex deliverables into 3-5 sub-tasks each
-- Reference actual project components, deliverables, or requirements by name
-- Organize tasks logically (e.g., research → creation → refinement → delivery)
-- Make tasks so specific that someone could execute them without additional context
+- Tasks must directly quote or reference elements from the project description AND clarification details
+- Include specific domain-appropriate implementation details based on all provided context
+- Break down complex deliverables into 3-5 sub-tasks each, incorporating clarification specifics
+- Reference actual project components, deliverables, requirements, and clarification answers by name
+- Organize tasks logically (e.g., research → creation → refinement → delivery) based on project context
+- Make tasks so specific that someone could execute them without additional context, using all provided details
 
 FORMAT REQUIREMENTS:
 ===================
@@ -369,13 +624,13 @@ Return a JSON array with this exact structure:
 CRITICAL SUCCESS CRITERIA:
 =========================
 Before generating tasks, ensure EVERY task:
-✓ References specific elements from the project name or description
-✓ Could ONLY apply to this exact project (not reusable for other projects)
-✓ Includes concrete deliverables or outcomes mentioned in the project goal
-✓ Connects directly to achieving the stated project objectives
-✓ Uses domain-specific terminology appropriate to the project type
-✓ Breaks down the work into actionable, time-bound steps
-✓ Addresses the specific requirements and deliverables mentioned
+✓ References specific elements from the project name, description, AND clarification details
+✓ Could ONLY apply to this exact project with its specific context (not reusable for other projects)
+✓ Includes concrete deliverables or outcomes mentioned in the project goal AND clarification answers
+✓ Connects directly to achieving the stated project objectives using all provided context
+✓ Uses domain-specific terminology appropriate to the project type and clarification details
+✓ Breaks down the work into actionable, time-bound steps based on all available information
+✓ Addresses the specific requirements, deliverables, and clarification details mentioned
 
 GENERATE TASKS NOW - MAKE THEM HYPER-SPECIFIC TO THIS PROJECT:
 Return only the JSON array, no additional text.
@@ -568,7 +823,7 @@ export const generateProjectSummary = async (projectName: string, goal: string):
       return `Project: ${projectName}\nGoal: ${goal}`;
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
 Generate a brief, professional project summary for:

@@ -1,28 +1,31 @@
-const functions = require('firebase-functions');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 
 // Initialize Firebase Admin
 admin.initializeApp();
 
+// Define secrets for email configuration
+const emailUser = defineSecret('EMAIL_USER');
+const emailPassword = defineSecret('EMAIL_PASSWORD');
+
 // Create reusable transporter object using SMTP transport
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: functions.config().email?.user || 'landy@synchro.solutions',
-    pass: functions.config().email?.password || 'your-app-password'
+    user: emailUser.value() || 'landy@synchro.solutions',
+    pass: emailPassword.value() || 'your-app-password'
   }
 });
 
 // Function to send invitation email
-exports.sendInvitationEmail = functions.firestore
-  .document('invitations/{invitationId}')
-  .onCreate(async (snap, context) => {
-    const invitation = snap.data();
+exports.sendInvitationEmail = onDocumentCreated('invitations/{invitationId}', async (event) => {
+    const invitation = event.data.data();
     
     try {
       const mailOptions = {
-        from: `"Synchro Team" <${functions.config().email?.user || 'landy@synchro.solutions'}>`,
+        from: `"Synchro Team" <${emailUser.value() || 'landy@synchro.solutions'}>`,
         to: invitation.invitedToEmail,
         subject: `You've been invited to join "${invitation.projectName}" project`,
         html: `
@@ -73,10 +76,8 @@ exports.sendInvitationEmail = functions.firestore
   });
 
 // Function to send task assignment email
-exports.sendTaskAssignmentEmail = functions.firestore
-  .document('tasks/{taskId}')
-  .onCreate(async (snap, context) => {
-    const task = snap.data();
+exports.sendTaskAssignmentEmail = onDocumentCreated('tasks/{taskId}', async (event) => {
+    const task = event.data.data();
     
     // Only send email if task is assigned to someone
     if (!task.assignedTo && (!task.assignedToUsers || task.assignedToUsers.length === 0)) {
@@ -119,7 +120,7 @@ exports.sendTaskAssignmentEmail = functions.firestore
       const creatorData = creatorDoc.exists ? creatorDoc.data() : { email: 'Unknown', displayName: 'Unknown' };
 
       const mailOptions = {
-        from: `"Synchro Team" <${functions.config().email?.user || 'landy@synchro.solutions'}>`,
+        from: `"Synchro Team" <${emailUser.value() || 'landy@synchro.solutions'}>`,
         to: assigneeEmails.join(', '),
         subject: `New task assigned: "${task.title}" in "${project.projectName}"`,
         html: `
@@ -166,11 +167,9 @@ exports.sendTaskAssignmentEmail = functions.firestore
   });
 
 // Function to send task update email
-exports.sendTaskUpdateEmail = functions.firestore
-  .document('tasks/{taskId}')
-  .onUpdate(async (change, context) => {
-    const before = change.before.data();
-    const after = change.after.data();
+exports.sendTaskUpdateEmail = onDocumentUpdated('tasks/{taskId}', async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
     
     // Only send email if status changed to Done
     if (before.status !== 'Done' && after.status === 'Done') {
@@ -193,7 +192,7 @@ exports.sendTaskUpdateEmail = functions.firestore
         const ownerData = ownerDoc.exists ? ownerDoc.data() : { email: 'Unknown', displayName: 'Unknown' };
 
         const mailOptions = {
-          from: `"Synchro Team" <${functions.config().email?.user || 'landy@synchro.solutions'}>`,
+          from: `"Synchro Team" <${emailUser.value() || 'landy@synchro.solutions'}>`,
           to: ownerData.email,
           subject: `Task completed: "${after.title}" in "${project.projectName}"`,
           html: `

@@ -25,10 +25,11 @@ import {
   Category,
   CheckCircle
 } from '@mui/icons-material';
-import { generateProjectTasks, GeneratedTask, TaskGenerationRequest } from '../services/aiService';
+import { generateProjectTasks, GeneratedTask, TaskGenerationRequest, ClarificationAnswer, analyzeGoalSpecificity } from '../services/aiService';
 import { createTask } from '../services/taskService';
 import { useAuth } from '../contexts/AuthContext';
 import { Project } from '../types';
+import ClarificationQuestionsDialog from './ClarificationQuestionsDialog';
 
 // Helper functions for AI analysis preview
 const extractKeyTerms = (goal: string): string[] => {
@@ -190,8 +191,7 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [projectType, setProjectType] = useState('General');
-  const [teamSize, setTeamSize] = useState('Small team (2-5 people)');
-  const [timeline, setTimeline] = useState('Flexible');
+  const [showClarificationDialog, setShowClarificationDialog] = useState(false);
 
   const handleGenerateTasks = async () => {
     if (!user) {
@@ -199,6 +199,18 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
       return;
     }
 
+    // Check if goal needs clarification
+    const goalAnalysis = analyzeGoalSpecificity(project.goal, project.projectName);
+    
+    if (goalAnalysis.needsClarification) {
+      setShowClarificationDialog(true);
+      return;
+    }
+    // Proceed with task generation
+    await generateTasksWithAnswers([]);
+  };
+
+  const generateTasksWithAnswers = async (answers: ClarificationAnswer[]) => {
     setLoading(true);
     setError('');
     setGeneratedTasks([]);
@@ -215,7 +227,7 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
       // Calculate timeline from deadline
       const calculatedTimeline = project.deadline ? 
         getTimelineFromDeadline(project.deadline) : 
-        timeline || 'Flexible';
+        'Flexible';
 
       const request: TaskGenerationRequest = {
         projectName: project.projectName,
@@ -223,7 +235,8 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
         projectType,
         teamSize: calculatedTeamSize,
         timeline: calculatedTimeline,
-        projectDeadline: project.deadline
+        projectDeadline: project.deadline,
+        clarificationAnswers: answers
       };
 
       const tasks = await generateProjectTasks(request);
@@ -319,6 +332,15 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClarificationComplete = (answers: ClarificationAnswer[]) => {
+    setShowClarificationDialog(false);
+    generateTasksWithAnswers(answers);
+  };
+
+  const handleClarificationClose = () => {
+    setShowClarificationDialog(false);
   };
 
   const handleClose = () => {
@@ -427,6 +449,23 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 The AI will analyze your project and extract these specific elements to create highly tailored tasks:
               </Typography>
+              
+              {/* Goal Specificity Score */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '120px' }}>
+                  🎯 Specificity:
+                </Typography>
+                <Chip 
+                  label={`${analyzeGoalSpecificity(project.goal, project.projectName).specificityScore}%`} 
+                  size="small" 
+                  color={analyzeGoalSpecificity(project.goal, project.projectName).specificityScore >= 50 ? 'success' : 'warning'}
+                />
+                {analyzeGoalSpecificity(project.goal, project.projectName).needsClarification && (
+                  <Typography variant="caption" color="warning.main">
+                    (Will ask clarification questions)
+                  </Typography>
+                )}
+              </Box>
               
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -629,6 +668,16 @@ const AITaskGenerator: React.FC<AITaskGeneratorProps> = ({
           </Button>
         )}
       </DialogActions>
+
+      {/* Clarification Questions Dialog */}
+      <ClarificationQuestionsDialog
+        open={showClarificationDialog}
+        onClose={handleClarificationClose}
+        onComplete={handleClarificationComplete}
+        projectName={project.projectName}
+        goal={project.goal}
+        projectType={projectType}
+      />
     </Dialog>
   );
 };
