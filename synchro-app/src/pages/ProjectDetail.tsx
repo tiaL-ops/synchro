@@ -51,7 +51,7 @@ import {
   Timeline
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { getProject, updateProject, addProjectMember, removeProjectMember } from '../services/projectService';
+import { getProject, updateProject, addProjectMember, removeProjectMember, deleteProject } from '../services/projectService';
 import { getProjectTasks, createTask, updateTask, deleteTask, getProjectTaskCount } from '../services/taskService';
 import { getUserById } from '../services/userService';
 import { Project, Task } from '../types';
@@ -62,6 +62,7 @@ import AddMemberDropdownDialog from '../components/AddMemberDropdownDialog';
 import EditTaskDialog from '../components/EditTaskDialog';
 import AITaskGenerator from '../components/AITaskGenerator';
 import TaskRoadmap from '../components/TaskRoadmap';
+import DeleteProjectDialog from '../components/DeleteProjectDialog';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -81,6 +82,7 @@ const ProjectDetail: React.FC = () => {
   const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [aiTaskGeneratorOpen, setAiTaskGeneratorOpen] = useState(false);
+  const [deleteProjectDialogOpen, setDeleteProjectDialogOpen] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [currentView, setCurrentView] = useState<'board' | 'roadmap'>('board');
   const [newTask, setNewTask] = useState({
@@ -333,6 +335,18 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!id || !user) return;
+    
+    try {
+      await deleteProject(id);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw error; // Re-throw to be handled by the dialog
+    }
+  };
+
   const isOwner = Boolean(project && project.createdBy === user?.uid);
   const isMember = Boolean(project && user && project.teamMembers[user.uid]);
 
@@ -479,6 +493,19 @@ const ProjectDetail: React.FC = () => {
               formatDate={formatDate}
             />
           </CardContent>
+          {isOwner && (
+            <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<Delete />}
+                onClick={() => setDeleteProjectDialogOpen(true)}
+                size="small"
+              >
+                Delete Project
+              </Button>
+            </CardActions>
+          )}
         </Card>
 
         {/* Task Board */}
@@ -822,6 +849,14 @@ const ProjectDetail: React.FC = () => {
             loadProjectData();
           }
         }}
+      />
+
+      {/* Delete Project Dialog */}
+      <DeleteProjectDialog
+        open={deleteProjectDialogOpen}
+        onClose={() => setDeleteProjectDialogOpen(false)}
+        onConfirm={handleDeleteProject}
+        projectName={project?.projectName || ''}
       />
     </Box>
   );

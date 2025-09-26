@@ -157,9 +157,23 @@ export const updateProject = async (projectId: string, updateData: Partial<Proje
   }
 };
 
-// Delete a project
+// Delete a project and all its associated tasks
 export const deleteProject = async (projectId: string): Promise<void> => {
   try {
+    // First, delete all tasks associated with this project
+    const tasksQuery = query(
+      collection(db, 'tasks'),
+      where('projectId', '==', projectId)
+    );
+    const tasksSnapshot = await getDocs(tasksQuery);
+    
+    // Delete all tasks
+    const deleteTaskPromises = tasksSnapshot.docs.map(taskDoc => 
+      deleteDoc(doc(db, 'tasks', taskDoc.id))
+    );
+    await Promise.all(deleteTaskPromises);
+    
+    // Then delete the project itself
     await deleteDoc(doc(db, 'projects', projectId));
   } catch (error) {
     throw error;
