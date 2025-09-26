@@ -14,8 +14,8 @@ const emailPassword = defineSecret('EMAIL_PASSWORD');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: emailUser.value() || 'landy@synchro.solutions',
-    pass: emailPassword.value() || 'your-app-password'
+    user: emailUser.value(),
+    pass: emailPassword.value()
   }
 });
 
@@ -25,7 +25,7 @@ exports.sendInvitationEmail = onDocumentCreated('invitations/{invitationId}', as
     
     try {
       const mailOptions = {
-        from: `"Synchro Team" <${emailUser.value() || 'landy@synchro.solutions'}>`,
+        from: `"Synchro Team" <${emailUser.value()}>`,
         to: invitation.invitedToEmail,
         subject: `You've been invited to join "${invitation.projectName}" project`,
         html: `
@@ -120,7 +120,7 @@ exports.sendTaskAssignmentEmail = onDocumentCreated('tasks/{taskId}', async (eve
       const creatorData = creatorDoc.exists ? creatorDoc.data() : { email: 'Unknown', displayName: 'Unknown' };
 
       const mailOptions = {
-        from: `"Synchro Team" <${emailUser.value() || 'landy@synchro.solutions'}>`,
+        from: `"Synchro Team" <${emailUser.value()}>`,
         to: assigneeEmails.join(', '),
         subject: `New task assigned: "${task.title}" in "${project.projectName}"`,
         html: `
@@ -192,7 +192,7 @@ exports.sendTaskUpdateEmail = onDocumentUpdated('tasks/{taskId}', async (event) 
         const ownerData = ownerDoc.exists ? ownerDoc.data() : { email: 'Unknown', displayName: 'Unknown' };
 
         const mailOptions = {
-          from: `"Synchro Team" <${emailUser.value() || 'landy@synchro.solutions'}>`,
+          from: `"Synchro Team" <${emailUser.value()}>`,
           to: ownerData.email,
           subject: `Task completed: "${after.title}" in "${project.projectName}"`,
           html: `

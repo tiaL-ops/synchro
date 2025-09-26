@@ -1,315 +1,249 @@
-## Synchro - MVP Day 1
+## Synchro - Project Management using LLM to breaks big project in smaller task
 
-Synchro is a web application designed to help student groups and teams create comprehensive project charters and manage their collaborative work. The app integrates AI technology to generate detailed team charters, break down projects into manageable tasks, and provide structured guidance for successful team collaboration.
+Synchro is a web application designed to help student groups and teams create comprehensive project charters and manage their collaborative work. The app integrates Gemini Prompt technology to generate detailed team charters and break down projects into manageable tasks.
 
+This was also my first time using Cursor, I wanted to see how " quick" am i able to ship product!
 
-### Project Overview
+[![Live Demo](https://synchro-core.web.app/)]
 
-This is a Day-1 MVP that enables:
-- User authentication (Google + Email/Password)
-- Project creation and management
-- Team member invitations with roles
-- Task management with status tracking
-- Secure access control with Firestore rules
 
 ### Features
 
-#### AI-Powered Task Generation
-- **Gemini AI Integration**: Automatically generates actionable tasks from project goals
-- **Smart Task Breakdown**: Creates 8-15 specific, manageable tasks
-- **Priority Assignment**: AI assigns High/Medium/Low priorities based on project context
-- **Time Estimation**: Provides estimated hours for each task
-- **Category Organization**: Groups tasks by type (Planning, Development, Testing, etc.)
+#### Gemini Prompt Task Generation
+- **Smart Project Analysis**: AI analyzes project goals and generates specific, actionable tasks
+- **Clarification Questions**: Interactive questions to refine vague project goals
+- **Intelligent Task Breakdown**: Creates 12-20 micro-tasks (1-8 hours each)
+- **Priority Assignment**: AI assigns High/Medium/Low priorities based on context
+- **Time Estimation**: Provides realistic time estimates for each task
+- **Category Organization**: Groups tasks by type (Research, Development, Testing, etc.)
 
-#### Authentication
-- **Google Sign-In**: Quick authentication with Google accounts
-- **Email/Password**: Traditional email-based authentication
-- **User Profiles**: Display names, preferences, and account management
-
-#### Project Management
-- **Create Projects**: Set project name, goals, and deadlines
+#### Team Collaboration
+- **Role-Based Access**: Owner, Member, and Viewer roles with appropriate permissions
 - **Team Invitations**: Add members by email with role assignment
-- **Role-Based Access**: Owner, Member, and Viewer roles
+- **Real-time Updates**: Changes sync across all team members
 - **Project Visibility**: Private and public project options
 
 #### Task Management
-- **Task Board**: Kanban-style board with status columns
-- **Status Tracking**: To Do → In Progress → Review → Done
-- **Task Assignment**: Assign tasks to team members
-- **Due Dates**: Set and track task deadlines
+- **Kanban Board**: Drag-and-drop task management with status columns
+- **Task Roadmap**: Visual timeline view of project progress
+- **Status Tracking**: To Do → In Progress → Review → Done workflow
+- **Task Assignment**: Assign tasks to specific team members
+- **Due Date Management**: Set and track task deadlines
+- **Progress Tracking**: Visual indicators for project completion
 
-#### Security
-- **Firestore Rules**: Enforce access control at database level
-- **Role-Based Permissions**: Only owners can edit projects, assignees can update tasks
+#### Security & Permissions
+- **Firestore Security Rules**: Database-level access control
+- **Role-Based Permissions**: Granular access control based on user roles
 - **Member-Only Access**: Non-members cannot view project data
+- **Project Ownership**: Only owners can delete projects and manage team
 
-###  Tech Stack
+### Tech Stack
 
 - **Frontend**: React 18, TypeScript, Material-UI
-- **Backend**: Firebase (Authentication, Firestore)
-- **Routing**: React Router v6
+- **Backend**: Firebase (Authentication, Firestore, Hosting)
+- **AI**: Google Gemini AI for intelligent task generation
 - **State Management**: React Context API
+- **Routing**: React Router v6
 - **Deployment**: Firebase Hosting
-
-### Project Structure
-
-```
-synchro-app/
-├── public/
-│   ├── index.html
-│   └── manifest.json
-├── src/
-│   ├── components/
-│   │   └── LoadingSpinner.tsx
-│   ├── contexts/
-│   │   └── AuthContext.tsx
-│   ├── pages/
-│   │   ├── AuthScreen.tsx
-│   │   ├── Dashboard.tsx
-│   │   ├── ProjectDetail.tsx
-│   │   └── CreateProject.tsx
-│   ├── services/
-│   │   ├── firebase.ts
-│   │   ├── authService.ts
-│   │   ├── projectService.ts
-│   │   └── taskService.ts
-│   ├── types/
-│   │   └── index.ts
-│   ├── App.tsx
-│   └── index.tsx
-├── firebase.json
-├── firestore.rules
-├── firestore.indexes.json
-└── package.json
-```
 
 ### Quick Start
 
-### Prerequisites
+#### Prerequisites
 - Node.js (v16 or higher)
 - npm or yarn
 - Firebase account
-- Gemini API key (optional, for AI task generation)
+- Gemini API key (optional, for AI features)
 
-### 1. Clone and Install
-
+### 1. Clone the Repository
 ```bash
-cd synchro-app
+git clone https://github.com/yourusername/synchro.git
+cd synchro/synchro-app
+```
+
+### 2. Install Dependencies
+```bash
 npm install
 ```
 
-### 2. Firebase Setup
-
-1. **Create Firebase Project**:
-   - Go to [Firebase Console](https://console.firebase.google.com/)
-   - Create a new project named "synchro-core"
-
-2. **Enable Authentication**:
-   - Go to Authentication → Sign-in method
-   - Enable "Email/Password" and "Google" providers
-
-3. **Create Firestore Database**:
-   - Go to Firestore Database
-   - Create database in production mode
-   - Choose a location (e.g., us-central1)
-
-4. **Get Configuration**:
-   - Go to Project Settings → General
-   - Scroll down to "Your apps" section
-   - Click "Add app" → Web app
-   - Copy the Firebase configuration
-
-#### 3. Configure Firebase
-
-The Firebase configuration is already set up in `src/services/firebase.ts` with your project credentials:
-
-```typescript
-const firebaseConfig = {
-  apiKey: "AIzaSyCjGC6KoJQMrQNeYSa5PetcOJq0Qn-HS6E",
-  authDomain: "synchro-core.firebaseapp.com",
-  projectId: "synchro-core",
-  // ... other config
-};
-```
-
-### 4. Set up Gemini AI (Optional)
-
-To enable AI-powered task generation:
-
-1. **Get Gemini API Key**:
-   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Create a new API key
-   - Copy the API key
-
-2. **Configure Environment Variables**:
-   - Create a `.env` file in the `synchro-app` directory:
-     ```bash
-     REACT_APP_GEMINI_API_KEY=your_gemini_api_key_here
-     ```
-   - Without the API key, the AI task generation will use fallback tasks
-
-### 5. Deploy Security Rules
-
+### 3. Environment Setup
 ```bash
-# From the project root directory
-firebase deploy --only firestore:rules
+# Copy the environment template
+cp .env.example .env
+
+# Edit .env with your configuration
+nano .env
 ```
 
-### 6. Run the Application
+**Required Environment Variables:**
+```env
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=your-firebase-api-key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your-project-id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+REACT_APP_FIREBASE_APP_ID=your-app-id
+REACT_APP_FIREBASE_MEASUREMENT_ID=your-measurement-id
 
+# Gemini AI Configuration (Optional)
+REACT_APP_GEMINI_API_KEY=your-gemini-api-key-here
+```
+
+### 4. Firebase Setup
+
+#### Create Firebase Project
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project
+3. Enable Authentication (Email/Password + Google)
+4. Create Firestore Database
+5. Get your configuration from Project Settings
+
+#### Deploy Security Rules
+```bash
+# From the project root
+firebase deploy --only firestore:rules,firestore:indexes
+```
+
+### 5. Run the Application
 ```bash
 npm start
 ```
 
 The application will be available at `http://localhost:3000`
 
-### Testing the MVP
+### Usage Guide
 
-### Test Scenario 1: User Registration and Project Creation
+### Creating Your First Project
+1. **Sign Up**: Create an account using Google or email/password
+2. **Create Project**: Click "Create Project" and enter your project details
+3. **AI Task Generation**: Use the AI Task Generator to automatically create tasks
+4. **Add Team Members**: Invite collaborators by email
+5. **Manage Tasks**: Use the Kanban board to track progress
 
-1. **Sign Up**: Create a new account with email/password or use Google sign-in
-2. **Create Project**: Click "Create Project" and fill in project details
-3. **Verify**: Check that you're automatically assigned as the project owner
+### AI Task Generation
+1. **Enter Project Goal**: Describe what you want to achieve
+2. **Answer Clarification Questions**: AI will ask specific questions to refine your goal
+3. **Review Generated Tasks**: AI creates 12-20 specific, actionable tasks
+4. **Customize Tasks**: Edit, add, or remove tasks as needed
+5. **Assign Tasks**: Assign tasks to team members
 
-### Test Scenario 2: Team Collaboration
+### Project Structure
 
-1. **User A**: Create a project and note the project ID from the URL
-2. **User B**: Sign up with a different account
-3. **User A**: Add User B's email to the project (Note: This is a simplified version - in production, you'd implement proper user search)
-4. **User B**: Navigate to the project URL and verify access
-5. **User B**: Create and update tasks
-
-### Test Scenario 3: Security Rules
-
-1. **User C**: Sign up with a third account
-2. **User C**: Try to access the project URL from Test Scenario 2
-3. **Verify**: User C should not be able to see the project data
-
-##  Data Model
-
-### Users Collection (`/users/{userId}`)
-```typescript
-{
-  displayName: string;
-  email: string;
-  avatarUrl?: string;
-  preferences: {
-    workHours?: string;
-    communicationStyle?: string;
-    skills?: string[];
-  };
-  createdAt: Date;
-  updatedAt: Date;
-}
+```
+synchro/
+├── synchro-app/                 # React frontend
+│   ├── src/
+│   │   ├── components/         # Reusable UI components
+│   │   │   ├── AITaskGenerator.tsx
+│   │   │   ├── DeleteProjectDialog.tsx
+│   │   │   ├── ClarificationQuestionsDialog.tsx
+│   │   │   └── ...
+│   │   ├── pages/              # Main application pages
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── ProjectDetail.tsx
+│   │   │   └── CreateProject.tsx
+│   │   ├── services/           # API and business logic
+│   │   │   ├── aiService.ts
+│   │   │   ├── projectService.ts
+│   │   │   └── taskService.ts
+│   │   └── types/              # TypeScript type definitions
+│   ├── .env.example           # Environment variables template
+│   └── package.json
+├── functions/                  # Firebase Cloud Functions
+│   ├── index.js               # Email notification functions
+│   └── package.json
+├── firebase.json              # Firebase configuration
+├── firestore.rules           # Database security rules
+└── firestore.indexes.json    # Database indexes
 ```
 
-### Projects Collection (`/projects/{projectId}`)
-```typescript
-{
-  projectName: string;
-  goal: string;
-  deadline?: Date;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-  teamMembers: {
-    [userId: string]: {
-      role: 'Owner' | 'Member' | 'Viewer';
-      joinedAt: Date;
-    };
-  };
-  visibility: 'private' | 'public';
-}
-```
+## 🔒 Security
 
-### Tasks Collection (`/tasks/{taskId}`)
-```typescript
-{
-  projectId: string;
-  description: string;
-  status: 'To Do' | 'In Progress' | 'Review' | 'Done';
-  assignedTo?: string;
-  dueDate?: Date;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-
-## 🔒 Security Rules
-
-The Firestore security rules enforce:
+### Firestore Security Rules
+The application uses comprehensive Firestore security rules:
 
 - **Users**: Can only read/write their own user document
 - **Projects**: Only members can read, only owners can edit/delete
 - **Tasks**: Only project members can read/create, only owners or assignees can update
+- **Invitations**: Only project owners can create invitations
+
+### Data Privacy
+- All user data is encrypted in transit and at rest
+- No sensitive information is stored in the frontend
+- API keys are managed through environment variables
+- User authentication is handled by Firebase Auth
 
 ## 🚀 Deployment
 
 ### Firebase Hosting
-
 ```bash
+# Build the application
 npm run build
+
+# Deploy to Firebase
 firebase deploy --only hosting
 ```
 
-### Environment Variables
+### Environment Variables for Production
+Ensure all environment variables are properly configured in your hosting environment:
+- Firebase configuration
+- Gemini API key (if using AI features)
+- Email service credentials (for notifications)
 
-For production deployment, ensure your Firebase configuration is properly set in the hosting environment.
+## 🧪 Testing
 
-## 🧪 Running Tests
+### Test Scenarios
+1. **User Registration**: Test both Google and email/password authentication
+2. **Project Creation**: Create a project and verify owner assignment
+3. **Team Collaboration**: Add team members and test role-based access
+4. **Task Management**: Create, assign, and update tasks
+5. **AI Features**: Test task generation with different project types
+6. **Security**: Verify non-members cannot access private projects
 
+### Running Tests
 ```bash
 npm test
 ```
 
-## 📝 Development Notes
+## 🤝 Contributing
 
-### Current Limitations (Day-1 MVP)
-- User search by email is simplified (placeholder implementation)
-- No real-time notifications
-- No file uploads
-- No advanced permissions beyond basic roles
-- No activity feeds or audit logs
+We welcome contributions! Please follow these steps:
 
-### Future Enhancements (Day 2+)
-- Real-time collaboration features
-- Advanced user search and invitations
-- File attachments and comments
-- Activity feeds and notifications
-- Advanced permission system
-- User presence indicators
-- Project templates
-- Time tracking and reporting
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Commit your changes**: `git commit -m 'Add amazing feature'`
+4. **Push to the branch**: `git push origin feature/amazing-feature`
+5. **Open a Pull Request**
 
-##  Contributing
+### Development Guidelines
+- Follow TypeScript best practices
+- Use Material-UI components consistently
+- Write comprehensive tests for new features
+- Update documentation for API changes
+- Follow the existing code style
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
-For support and questions:
-- Open an issue in the repository
-- Check the Firebase documentation
-- Review the React and Material-UI documentation
+- **Documentation**: Check the [Firebase](https://firebase.google.com/docs) and [React](https://reactjs.org/docs) documentation
+- **Issues**: Open an issue in the repository for bugs or feature requests
+- **Discussions**: Use GitHub Discussions for questions and ideas
 
-## 🎉 Success Criteria
+## 🎉 Acknowledgments
 
- **Two users can successfully sign in** using both Google and Email/Password providers  
-**User A can create a new project** and is automatically assigned the 'Owner' role  
-**User A can add User B to the project** with a role  
- **Tasks can be created and assigned** to User B, visible to both users  
-**User B can change task status** but cannot edit project details  
- **User C (non-member) cannot access** project data  
-**Security rules are properly enforced** at the database level  
- **Application runs locally** with Firebase emulators  
+- **Firebase** for backend infrastructure
+- **Google Gemini AI** for intelligent task generation
+- **Material-UI** for beautiful UI components
+- **React** for the amazing frontend framework
 
-This MVP successfully demonstrates a functional team project management system with proper security, role-based access control, and collaborative features.
+
+
+
+---
+
+**Made with ❤️ for better project management**
+
+[Live Demo](https://synchro-core.web.app) | [Report Bug](https://github.com/tiaL-ops/synchro/issues) | [Request Feature](https://github.com/tiaL-ops/synchro/issues)
