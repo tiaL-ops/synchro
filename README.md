@@ -2,7 +2,7 @@
 
 **Synchro** is a web app that helps student groups and teams plan projects, create team charters, and manage work together. It uses **Gemini AI** to turn big project goals into smaller, actionable tasks.
 Let's say a more mature that my first attemtp last year haha [toDoList] (https://github.com/tiaL-ops/toDoList)
-This was also my first time building with **Cursor** 🫣—I wanted to see how fast I could ship a working product.
+This was also my first time building with **Cursor** :D ,I wanted to see how fast I could ship a working product.
 
 [Live Demo](https://synchro-core.web.app/)
 
